@@ -2461,30 +2461,35 @@ function syncPush() {
   var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
   var repo = user + '/' + user + '.github.io';
   var url = 'https://api.github.com/repos/' + repo + '/contents/userData.json';
-  // GET sha first
-  fetch(url, { headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'} })
-    .then(function(r){ return r.json(); })
-    .then(function(json) {
-      var body = { message:'sync: push userData '+new Date().toISOString().slice(0,16), content:b64, branch:'main' };
-      if (json && json.sha) body.sha = json.sha;
-      return fetch(url, {
-        method:'PUT',
-        headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},
-        body:JSON.stringify(body)
+  function tryPut(retries) {
+    return fetch(url, { cache:'no-store', headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'} })
+      .then(function(r){ return r.json(); })
+      .then(function(json) {
+        var body = { message:'sync: push userData '+new Date().toISOString().slice(0,16), content:b64, branch:'main' };
+        if (json && json.sha) body.sha = json.sha;
+        return fetch(url, {
+          method:'PUT',
+          cache:'no-store',
+          headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},
+          body:JSON.stringify(body)
+        }).then(function(r){ return r.json().then(function(j){ return {status:r.status, json:j}; }); });
+      })
+      .then(function(res) {
+        var json = res.json;
+        if (json.content || json.commit) {
+          status.textContent = '✅ 推送成功';
+          showToast('推送成功');
+        } else if (retries > 0 && res.status && (res.status === 409 || res.status === 422 || (json.message && /does not match|conflict/i.test(json.message)))) {
+          status.textContent = 'SHA 冲突，自动重试…';
+          return new Promise(function(r){ setTimeout(r, 500); }).then(function(){ return tryPut(retries-1); });
+        } else {
+          status.textContent = '❌ 推送失败: ' + (json.message || '');
+        }
       });
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(json) {
-      if (json.content || json.commit) {
-        status.textContent = '✅ 推送成功';
-        showToast('推送成功');
-      } else {
-        status.textContent = '❌ 推送失败: ' + (json.message || '');
-      }
-    })
-    .catch(function(e) {
-      status.textContent = '❌ 网络错误: ' + e.message;
-    });
+  }
+  tryPut(1).catch(function(e) {
+    status.textContent = '❌ 网络错误: ' + e.message;
+  });
 }
 
 function syncPull() {
@@ -2497,7 +2502,7 @@ function syncPull() {
   status.textContent = '拉取中…';
   var repo = user + '/' + user + '.github.io';
   var url = 'https://api.github.com/repos/' + repo + '/contents/userData.json';
-  fetch(url, { headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'} })
+  fetch(url, { cache:'no-store', headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'} })
     .then(function(r){ return r.json(); })
     .then(function(json) {
       if (json && json.content) {
@@ -2536,18 +2541,26 @@ Storage.prototype.setItem = function(key, val) {
       var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
       var repo = user + '/' + user + '.github.io';
       var url = 'https://api.github.com/repos/' + repo + '/contents/userData.json';
-      fetch(url, { headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'} })
-        .then(function(r){ return r.json(); })
-        .then(function(json) {
-          var body = { message:'auto-sync '+new Date().toISOString().slice(0,16), content:b64, branch:'main' };
-          if (json && json.sha) body.sha = json.sha;
-          return fetch(url, {
-            method:'PUT',
-            headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},
-            body:JSON.stringify(body)
+      function autoTry(retries) {
+        return fetch(url, { cache:'no-store', headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'} })
+          .then(function(r){ return r.json(); })
+          .then(function(json) {
+            var body = { message:'auto-sync '+new Date().toISOString().slice(0,16), content:b64, branch:'main' };
+            if (json && json.sha) body.sha = json.sha;
+            return fetch(url, {
+              method:'PUT',
+              cache:'no-store',
+              headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},
+              body:JSON.stringify(body)
+            }).then(function(r){ return r.json().then(function(j){ return {status:r.status, json:j}; }); });
+          })
+          .then(function(res) {
+            if (retries > 0 && res.status && (res.status === 409 || res.status === 422 || (res.json.message && /does not match|conflict/i.test(res.json.message)))) {
+              return new Promise(function(r){ setTimeout(r, 500); }).then(function(){ return autoTry(retries-1); });
+            }
           });
-        })
-        .catch(function(){});
+      }
+      autoTry(1).catch(function(){});
     }, 700);
   }
 };
