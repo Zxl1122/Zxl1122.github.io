@@ -1,0 +1,2415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>桥桥工作台</title>
+<style>
+/* ===== Reset & Base ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --pink-deep:#E91E63;--pink-main:#F06292;--pink-bg:#FCE4EC;--pink-active:#FFB6C1;
+  --bg:#fff;--text:#333;--text-light:#888;--border:#eee;
+  --shadow:0 2px 12px rgba(233,30,99,.08);--shadow-hover:0 4px 20px rgba(233,30,99,.15);
+  --radius:12px;--radius-sm:8px;
+}
+html{font-size:15px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
+button{cursor:pointer;font-family:inherit;border:none;outline:none}
+input,textarea,select{font-family:inherit;font-size:inherit;outline:none;border:none}
+a{color:var(--pink-main);text-decoration:none}
+ul{list-style:none}
+
+/* ===== Top Bar ===== */
+.top-bar{position:fixed;top:0;left:0;right:0;height:56px;background:#fff;display:flex;align-items:center;gap:8px;padding:0 12px;z-index:1000;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+.hamburger{font-size:20px;background:none;color:var(--pink-deep);padding:4px 8px;display:flex;align-items:center}
+.top-logo{display:flex;align-items:center;gap:6px;font-weight:700;font-size:17px;color:var(--pink-deep);white-space:nowrap}
+.top-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--pink-deep);flex-shrink:0}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.mcp-wrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-light)}
+.mcp-wrap .label{white-space:nowrap}
+.toggle-switch{position:relative;width:40px;height:22px;background:#ddd;border-radius:11px;transition:background .2s;cursor:pointer;flex-shrink:0}
+.toggle-switch.on{background:var(--pink-main)}
+.toggle-switch .knob{position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform .2s}
+.toggle-switch.on .knob{transform:translateX(18px)}
+.sync-wrap .sync-btn{background:var(--pink-bg);color:var(--pink-deep);border:1px solid var(--pink-active);padding:4px 10px;border-radius:14px;font-size:12px;white-space:nowrap}
+.search-top-row{position:fixed;top:56px;left:0;right:0;background:#fff;padding:6px 12px;display:flex;gap:6px;z-index:999;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.search-top-row input{flex:1;border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:13px}
+.search-top-row input:focus{border-color:var(--pink-main)}
+.search-top-row .search-btn{background:var(--pink-main);color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+
+/* ===== Sidebar ===== */
+.sidebar{position:fixed;top:88px;left:0;bottom:0;width:220px;background:#fff;overflow-y:auto;z-index:998;transition:transform .25s;padding-bottom:40px}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--pink-active);border-radius:2px}
+.group-title{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-size:13px;font-weight:700;color:var(--pink-deep);cursor:pointer;user-select:none}
+.group-title .arrow{font-size:10px;transition:transform .2s}
+.group-title.collapsed .arrow{transform:rotate(-90deg)}
+.group-items{overflow:hidden;transition:max-height .25s ease}
+.group-items.collapsed{max-height:0!important}
+.sub-item{display:block;padding:8px 14px 8px 28px;font-size:13px;color:var(--text);border-left:3px solid transparent;cursor:pointer;background:var(--pink-bg);margin:2px 8px;border-radius:var(--radius-sm);transition:all .15s}
+.sub-item:hover{background:var(--pink-active)}
+.sub-item.active{background:var(--pink-active);color:var(--pink-deep);font-weight:600}
+
+/* ===== Main ===== */
+.main{margin-top:88px;margin-left:220px;padding:16px;min-height:calc(100vh - 88px);transition:margin-left .25s}
+.page{display:none}
+.page.active{display:block}
+.page-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.page-title h2{font-size:18px;color:var(--pink-deep);display:flex;align-items:center;gap:6px}
+.pill-btn{background:var(--pink-main);color:#fff;padding:6px 16px;border-radius:20px;font-size:13px;white-space:nowrap;transition:background .15s}
+.pill-btn:hover{background:var(--pink-deep)}
+.pill-btn.outline{background:#fff;border:1px solid var(--pink-main);color:var(--pink-main)}
+.pill-btn.sm{padding:4px 10px;font-size:12px;border-radius:14px}
+.pill-btn.gray{background:#f5f5f5;color:var(--text-light)}
+
+/* ===== Cards ===== */
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;box-shadow:var(--shadow);transition:box-shadow .15s}
+.card:hover{box-shadow:var(--shadow-hover)}
+.card.flash{animation:flashRed 2.4s ease}
+@keyframes flashRed{0%,100%{border-color:var(--border)}25%,75%{border:2px solid var(--pink-deep)}50%{border-color:var(--border)}}
+.card-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.card-meta{font-size:12px;color:var(--text-light);margin-bottom:6px}
+.card-content{font-size:13px;color:#555;white-space:pre-wrap;word-break:break-word}
+.card-content.clamped{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:6px}
+.card-actions{display:flex;gap:6px;flex-wrap:wrap}
+.card-actions button{background:none;color:var(--text-light);font-size:12px;padding:2px 6px;border-radius:4px;transition:all .15s}
+.card-actions button:hover{background:var(--pink-bg);color:var(--pink-deep)}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:500}
+.tag-pink{background:var(--pink-bg);color:var(--pink-deep)}
+.tag-green{background:#e8f5e9;color:#2e7d32}
+.tag-blue{background:#e3f2fd;color:#1565c0}
+.tag-orange{background:#fff3e0;color:#e65100}
+.tag-gray{background:#f5f5f5;color:#888}
+.tag-red{background:#ffebee;color:#c62828}
+.tag-purple{background:#f3e5f5;color:#7b1fa2}
+.read-more{color:var(--pink-main);font-size:12px;cursor:pointer;margin-top:4px;display:inline-block}
+.read-more:hover{text-decoration:underline}
+
+/* ===== Forms ===== */
+.form-row{margin-bottom:10px}
+.form-row label{display:block;font-size:12px;color:var(--text-light);margin-bottom:4px}
+.form-row input,.form-row textarea,.form-row select{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px}
+.form-row input:focus,.form-row textarea:focus,.form-row select:focus{border-color:var(--pink-main)}
+.form-row textarea{resize:vertical;min-height:60px}
+.form-inline{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.form-inline .form-row{flex:1;min-width:120px}
+
+/* ===== Filter bar ===== */
+.filter-bar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.filter-bar button{padding:4px 12px;border-radius:14px;font-size:12px;background:#f5f5f5;color:var(--text-light)}
+.filter-bar button.active{background:var(--pink-main);color:#fff}
+.filter-banner{background:var(--pink-bg);color:var(--pink-deep);padding:6px 12px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+
+/* ===== Modal ===== */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);z-index:2000;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:var(--radius);width:100%;max-width:520px;max-height:85vh;overflow-y:auto;padding:20px;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal h3{font-size:16px;color:var(--pink-deep);margin-bottom:14px}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.modal-close-btn{border:1px solid var(--pink-deep)!important;color:var(--pink-deep)!important;background:#fff!important;border-radius:20px!important;padding:6px 20px!important;font-size:13px}
+.modal-close-btn:hover{background:var(--pink-bg)!important}
+
+/* ===== Table (checkin only) ===== */
+.checkin-table{width:100%;border-collapse:collapse;margin-bottom:12px}
+.checkin-table th,.checkin-table td{border:1px solid var(--border);padding:8px;text-align:center;font-size:13px}
+.checkin-table th{background:var(--pink-bg);color:var(--pink-deep)}
+.checkin-table input[type=checkbox]{width:18px;height:18px;accent-color:var(--pink-main)}
+
+/* ===== Toast ===== */
+.toast{position:fixed;top:100px;left:50%;transform:translateX(-50%);background:rgba(33,33,33,.9);color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;z-index:3000;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+
+/* ===== Todo reminder ===== */
+.todo-notify{position:fixed;top:100px;right:16px;background:#fff;border:2px solid var(--pink-deep);border-radius:var(--radius);padding:12px 16px;z-index:3000;max-width:300px;box-shadow:var(--shadow-hover);display:none}
+.todo-notify.show{display:block}
+.todo-notify .nt-title{font-size:13px;font-weight:600;color:var(--pink-deep)}
+.todo-notify .nt-body{font-size:12px;color:var(--text);margin-top:4px}
+.todo-notify .nt-actions{display:flex;gap:8px;margin-top:8px}
+
+/* ===== Index track cards ===== */
+.idx-card{background:#fff;border-radius:var(--radius);padding:14px;margin-bottom:12px;box-shadow:var(--shadow);border-left:4px solid var(--pink-main)}
+.idx-card .idx-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.idx-card .idx-icon{width:24px;height:24px;border-radius:50%;flex-shrink:0}
+.idx-card .idx-name{font-size:15px;font-weight:700}
+.idx-card .idx-rows{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+.idx-card .idx-row{font-size:13px}
+.idx-card .idx-row .lbl{color:var(--text-light)}
+.idx-card .idx-row .val{font-weight:600;color:var(--text)}
+.idx-card .idx-note{font-size:13px;color:#555;background:var(--pink-bg);padding:8px 10px;border-radius:var(--radius-sm);margin-top:6px;white-space:pre-wrap}
+.idx-card .idx-source{font-size:11px;color:var(--text-light);margin-top:6px}
+
+/* ===== Empty state ===== */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-light);font-size:14px}
+
+/* ===== Fund quote ===== */
+.fund-quote{display:flex;gap:8px;align-items:center;font-size:12px;margin-top:4px}
+.fund-quote .up{color:#e53935}
+.fund-quote .down{color:#43a047}
+
+/* ===== Mobile ===== */
+.sidebar-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.3);z-index:997;display:none}
+.sidebar-overlay.show{display:block}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);width:240px}
+  .sidebar.show{transform:translateX(0)}
+  .main{margin-left:0}
+  .top-logo{font-size:15px}
+  .mcp-wrap .label{display:none}
+  .modal{max-width:100%;max-height:80vh}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== Top Bar ===== -->
+<div class="top-bar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="top-logo"><span class="dot"></span>桥桥工作台</div>
+  <div class="top-right">
+    <div class="mcp-wrap">
+      <span class="label">MCP</span>
+      <div class="toggle-switch on" id="mcpToggle" onclick="toggleMCP()"><div class="knob"></div></div>
+    </div>
+    <div class="sync-wrap"><button class="sync-btn" onclick="openSyncModal()">☁ 同步</button></div>
+  </div>
+</div>
+
+<!-- ===== Search Row ===== -->
+<div class="search-top-row">
+  <input type="text" id="globalSearch" placeholder="全局搜索工作台内容…" onkeydown="if(event.key==='Enter')doSearch()">
+  <button class="search-btn" onclick="doSearch()">🔍</button>
+</div>
+
+<!-- ===== Sidebar ===== -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<nav class="sidebar" id="sidebar">
+  <div class="group-title" onclick="toggleGroup(1)"><span>🚀 AI新账号运营</span><span class="arrow">▼</span></div>
+  <div class="group-items" id="group1">
+    <div class="sub-item" data-page="operation-ideas" onclick="showPage('operation-ideas')">运营思路&选题素材库</div>
+    <div class="sub-item" data-page="account-observe" onclick="showPage('account-observe')">对标账号观测记录</div>
+    <div class="sub-item" data-page="work-review" onclick="showPage('work-review')">作品复盘记录表</div>
+  </div>
+  <div class="group-title" onclick="toggleGroup(2)"><span>👕 AI 服装带货</span><span class="arrow">▼</span></div>
+  <div class="group-items" id="group2">
+    <div class="sub-item" data-page="product-lib" onclick="showPage('product-lib')">选品库管理</div>
+    <div class="sub-item" data-page="idea-lib" onclick="showPage('idea-lib')">选题灵感库</div>
+    <div class="sub-item" data-page="script-lib" onclick="showPage('script-lib')">短视频脚本库</div>
+    <div class="sub-item" data-page="prompt-lib" onclick="showPage('prompt-lib')">AI素材提示词仓库</div>
+    <div class="sub-item" data-page="record-review" onclick="showPage('record-review')">发布记录&复盘</div>
+  </div>
+  <div class="group-title" onclick="toggleGroup(3)"><span>💸 赚钱思路与副业机会</span><span class="arrow">▼</span></div>
+  <div class="group-items" id="group3">
+    <div class="sub-item" data-page="side-idea" onclick="showPage('side-idea')">灵感脑洞库</div>
+    <div class="sub-item" data-page="project-eval" onclick="showPage('project-eval')">项目评估池</div>
+    <div class="sub-item" data-page="project-test" onclick="showPage('project-test')">项目测试记录</div>
+    <div class="sub-item" data-page="project-archive" onclick="showPage('project-archive')">项目归档复盘</div>
+  </div>
+  <div class="group-title" onclick="toggleGroup(4)"><span>📈 理财研究</span><span class="arrow">▼</span></div>
+  <div class="group-items" id="group4">
+    <div class="sub-item" data-page="finance-news" onclick="showPage('finance-news')">理财每日新知</div>
+    <div class="sub-item" data-page="asset-account" onclick="showPage('asset-account')">持仓台账</div>
+    <div class="sub-item" data-page="index-track" onclick="showPage('index-track')">指数跟踪表</div>
+    <div class="sub-item" data-page="rebalance" onclick="showPage('rebalance')">调仓再平衡记录</div>
+  </div>
+  <div class="group-title" onclick="toggleGroup(5)"><span>🧘 健康养生</span><span class="arrow">▼</span></div>
+  <div class="group-items" id="group5">
+    <div class="sub-item" data-page="health-checkin" onclick="showPage('health-checkin')">今日打卡面板</div>
+    <div class="sub-item" data-page="checkin-history" onclick="showPage('checkin-history')">查看历史打卡汇总</div>
+    <div class="sub-item" data-page="body-note" onclick="showPage('body-note')">身体观察备忘录</div>
+  </div>
+  <div class="group-title" onclick="toggleGroup(6)"><span>📑 通用工具</span><span class="arrow">▼</span></div>
+  <div class="group-items" id="group6">
+    <div class="sub-item" data-page="knowledge-base" onclick="showPage('knowledge-base')">知识库笔记</div>
+    <div class="sub-item" data-page="favorites" onclick="showPage('favorites')">我的收藏</div>
+    <div class="sub-item" data-page="todo-list" onclick="showPage('todo-list')">今日待办清单</div>
+  </div>
+</nav>
+
+<!-- ===== Main Content ===== -->
+<div class="main" id="main">
+
+<!-- 1. operation-ideas -->
+<div class="page" id="page-operation-ideas">
+  <div class="page-title"><h2>🚀 运营思路&选题素材库</h2>
+    <button class="pill-btn" onclick="loadRemoteData()">AI刷新抓取</button></div>
+  <div class="card-meta" id="ops-update-time"></div>
+  <div id="ops-list"></div>
+</div>
+
+<!-- 2. account-observe -->
+<div class="page" id="page-account-observe">
+  <div class="page-title"><h2>📊 对标账号观测记录</h2>
+    <button class="pill-btn" onclick="openAccountObserveForm()">+ 新增</button></div>
+  <div id="account-observe-list"></div>
+</div>
+
+<!-- 3. work-review -->
+<div class="page" id="page-work-review">
+  <div class="page-title"><h2>📝 作品复盘记录表</h2>
+    <button class="pill-btn" onclick="openWorkReviewForm()">+ 新增</button></div>
+  <div id="work-review-list"></div>
+</div>
+
+<!-- 4. product-lib -->
+<div class="page" id="page-product-lib">
+  <div class="page-title"><h2>👕 选品库管理</h2>
+    <button class="pill-btn" onclick="openProductForm()">+ 新增</button></div>
+  <div class="filter-bar" id="product-filter-bar">
+    <button class="active" onclick="filterProduct('all',this)">全部</button>
+    <button onclick="filterProduct('pending',this)">待定</button>
+    <button onclick="filterProduct('hold',this)">观望</button>
+    <button onclick="filterProduct('done',this)">已定</button>
+  </div>
+  <div id="product-list"></div>
+</div>
+
+<!-- 5. idea-lib -->
+<div class="page" id="page-idea-lib">
+  <div class="page-title"><h2>💡 选题灵感库</h2>
+    <button class="pill-btn" onclick="loadRemoteData()">AI刷新抓取</button></div>
+  <div id="idea-lib-list"></div>
+</div>
+
+<!-- 6. script-lib -->
+<div class="page" id="page-script-lib">
+  <div class="page-title"><h2>🎬 短视频脚本库</h2>
+    <button class="pill-btn" onclick="openScriptForm()">+ 新增</button></div>
+  <div id="script-filter-banner"></div>
+  <div id="script-list"></div>
+</div>
+
+<!-- 7. prompt-lib -->
+<div class="page" id="page-prompt-lib">
+  <div class="page-title"><h2>🤖 AI素材提示词仓库</h2>
+    <button class="pill-btn" onclick="openPromptForm()">+ 新增</button></div>
+  <div class="filter-bar" id="prompt-filter-bar">
+    <button class="active" onclick="filterPrompt('all',this)">全部</button>
+  </div>
+  <div id="prompt-list"></div>
+</div>
+
+<!-- 8. record-review -->
+<div class="page" id="page-record-review">
+  <div class="page-title"><h2>📡 发布记录&复盘</h2>
+    <button class="pill-btn" onclick="openRecordForm()">+ 新增</button></div>
+  <div id="record-list"></div>
+</div>
+
+<!-- 9. side-idea -->
+<div class="page" id="page-side-idea">
+  <div class="page-title"><h2>🧠 灵感脑洞库</h2>
+    <button class="pill-btn" onclick="openSideIdeaForm()">+ 新增</button></div>
+  <div id="side-idea-list"></div>
+</div>
+
+<!-- 10. project-eval -->
+<div class="page" id="page-project-eval">
+  <div class="page-title"><h2>📋 项目评估池</h2>
+    <button class="pill-btn" onclick="openEvalForm()">+ 新增</button></div>
+  <div id="project-eval-list"></div>
+</div>
+
+<!-- 11. project-test -->
+<div class="page" id="page-project-test">
+  <div class="page-title"><h2>🧪 项目测试记录</h2>
+    <button class="pill-btn" onclick="openTestForm()">+ 新增</button></div>
+  <div id="project-test-list"></div>
+</div>
+
+<!-- 12. project-archive -->
+<div class="page" id="page-project-archive">
+  <div class="page-title"><h2>📦 项目归档复盘</h2>
+    <button class="pill-btn" onclick="openArchiveForm()">+ 新增</button></div>
+  <div id="project-archive-list"></div>
+</div>
+
+<!-- 13. finance-news -->
+<div class="page" id="page-finance-news">
+  <div class="page-title"><h2>📈 理财每日新知</h2>
+    <button class="pill-btn" onclick="loadRemoteData()">AI刷新抓取</button></div>
+  <div class="card-meta" id="finance-update-time"></div>
+  <div id="finance-news-list"></div>
+</div>
+
+<!-- 14. asset-account -->
+<div class="page" id="page-asset-account">
+  <div class="page-title"><h2>💰 持仓台账</h2>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="pill-btn outline sm" onclick="quickAddByCode()">🔍 识别导入</button>
+      <button class="pill-btn outline sm" onclick="refreshFundQuotes()">🔄 刷新涨跌</button>
+      <button class="pill-btn sm" onclick="openAssetForm()">+ 新增</button>
+    </div>
+  </div>
+  <div id="asset-list"></div>
+</div>
+
+<!-- 15. index-track -->
+<div class="page" id="page-index-track">
+  <div class="page-title"><h2>📊 指数跟踪表</h2>
+    <button class="pill-btn" onclick="loadRemoteData()">AI刷新抓取</button></div>
+  <div id="index-track-list"></div>
+</div>
+
+<!-- 16. rebalance -->
+<div class="page" id="page-rebalance">
+  <div class="page-title"><h2>⚖️ 调仓再平衡记录</h2>
+    <button class="pill-btn" onclick="openRebalanceForm()">+ 新增</button></div>
+  <div id="rebalance-list"></div>
+</div>
+
+<!-- 17. health-checkin -->
+<div class="page" id="page-health-checkin">
+  <div class="page-title"><h2>🧘 今日打卡面板</h2>
+    <button class="pill-btn" onclick="saveCheckin()">保存今日打卡</button></div>
+  <div id="checkin-panel"></div>
+</div>
+
+<!-- 18. checkin-history -->
+<div class="page" id="page-checkin-history">
+  <div class="page-title"><h2>📅 查看历史打卡汇总</h2>
+    <button class="pill-btn" onclick="renderCheckinHistory()">AI汇总本月</button></div>
+  <div id="checkin-history-panel"></div>
+</div>
+
+<!-- 19. body-note -->
+<div class="page" id="page-body-note">
+  <div class="page-title"><h2>🗒️ 身体观察备忘录</h2>
+    <button class="pill-btn" onclick="openBodyNoteForm()">+ 新增</button></div>
+  <div id="body-note-list"></div>
+</div>
+
+<!-- 20. knowledge-base -->
+<div class="page" id="page-knowledge-base">
+  <div class="page-title"><h2>📑 知识库笔记</h2>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="pill-btn outline sm" onclick="openPasteModal()">📋 粘贴</button>
+      <button class="pill-btn outline sm" onclick="openCopyNotesModal()">⧉ 复制笔记</button>
+      <button class="pill-btn sm" onclick="openKbForm()">+ 新增</button>
+    </div>
+  </div>
+  <div class="filter-bar" id="kb-filter-bar">
+    <button class="active" onclick="filterKb('all',this)">全部</button>
+    <button onclick="filterKb('理财',this)">理财</button>
+    <button onclick="filterKb('养生',this)">养生</button>
+    <button onclick="filterKb('AI',this)">AI</button>
+    <button onclick="filterKb('运营',this)">运营</button>
+  </div>
+  <div id="knowledge-base-list"></div>
+</div>
+
+<!-- 21. favorites -->
+<div class="page" id="page-favorites">
+  <div class="page-title"><h2>🔖 我的收藏</h2></div>
+  <div id="favorites-list"></div>
+</div>
+
+<!-- 22. todo-list -->
+<div class="page" id="page-todo-list">
+  <div class="page-title"><h2>✅ 今日待办清单</h2>
+    <button class="pill-btn" onclick="openTodoForm()">+ 新增</button></div>
+  <div id="todo-list-render"></div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ===== Modals ===== -->
+<!-- Generic Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3 id="editModalTitle">编辑</h3>
+    <div id="editModalBody"></div>
+    <div class="modal-footer">
+      <button class="pill-btn" id="editModalSave">保存</button>
+      <button class="modal-close-btn" onclick="closeModal('editModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- News/Content Modal -->
+<div class="modal-overlay" id="newsModal">
+  <div class="modal">
+    <h3 id="newsModalTitle"></h3>
+    <div id="newsModalBody" style="font-size:13px;color:#555;white-space:pre-wrap;word-break:break-word"></div>
+    <div class="modal-footer" id="newsModalFooter" style="justify-content:flex-end">
+      <button class="pill-btn sm" id="newsModalCopy">复制</button>
+      <button class="pill-btn sm" id="newsModalDownload">下载</button>
+      <button class="modal-close-btn" onclick="closeModal('newsModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Search Results Modal -->
+<div class="modal-overlay" id="searchModal">
+  <div class="modal">
+    <h3>搜索结果</h3>
+    <div id="searchModalBody"></div>
+    <div class="modal-footer">
+      <button class="modal-close-btn" onclick="closeModal('searchModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Paste Modal (knowledge base) -->
+<div class="modal-overlay" id="pasteModal">
+  <div class="modal">
+    <h3>粘贴录入</h3>
+    <div class="form-row">
+      <label>粘贴 AI 分析内容（标题取首行）</label>
+      <textarea id="pasteTextarea" rows="10" placeholder="把对话里 AI 分析好的内容整段粘贴到这里…"></textarea>
+    </div>
+    <div class="form-row">
+      <label>分类</label>
+      <select id="pasteCategory">
+        <option value="理财">理财</option>
+        <option value="养生">养生</option>
+        <option value="AI">AI</option>
+        <option value="运营">运营</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="pill-btn" onclick="savePasteNote()">生成卡片</button>
+      <button class="modal-close-btn" onclick="closeModal('pasteModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Copy Notes Modal -->
+<div class="modal-overlay" id="copyNotesModal">
+  <div class="modal">
+    <h3>复制笔记</h3>
+    <div class="form-row">
+      <label>选择分类</label>
+      <select id="copyNotesCat" onchange="previewCopyNotes()">
+        <option value="理财">理财</option>
+        <option value="养生">养生</option>
+        <option value="AI">AI</option>
+        <option value="运营">运营</option>
+      </select>
+    </div>
+    <div id="copyNotesPreview" style="background:#f9f9f9;padding:10px;border-radius:8px;font-size:12px;max-height:300px;overflow-y:auto;white-space:pre-wrap"></div>
+    <div class="modal-footer">
+      <button class="pill-btn" onclick="doCopyNotes()">一键复制</button>
+      <button class="modal-close-btn" onclick="closeModal('copyNotesModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sync Modal -->
+<div class="modal-overlay" id="syncModal">
+  <div class="modal">
+    <h3>☁ 云端同步</h3>
+    <p style="font-size:12px;color:var(--text-light);margin-bottom:10px">数据直连你自己的 GitHub 仓库（userData.json），token 仅存浏览器本地。</p>
+    <div class="form-row">
+      <label>GitHub 用户名</label>
+      <input type="text" id="syncGithubUser" placeholder="你的GitHub用户名">
+    </div>
+    <div class="form-row">
+      <label>GitHub Token（fine-grained PAT）</label>
+      <input type="password" id="syncGithubToken" placeholder="ghp_xxxxx">
+    </div>
+    <div id="syncStatus" style="font-size:12px;color:var(--text-light);margin:8px 0"></div>
+    <div class="modal-footer">
+      <button class="pill-btn outline" onclick="syncPull()">⤓ 拉取</button>
+      <button class="pill-btn" onclick="syncPush()">⤒ 推送</button>
+      <button class="modal-close-btn" onclick="closeModal('syncModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- DCA Modal -->
+<div class="modal-overlay" id="dcaModal">
+  <div class="modal">
+    <h3>定投设置</h3>
+    <div id="dcaModalBody"></div>
+    <div class="modal-footer">
+      <button class="pill-btn" onclick="saveDca()">保存</button>
+      <button class="modal-close-btn" onclick="closeModal('dcaModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Asset Edit Modal -->
+<div class="modal-overlay" id="assetModal">
+  <div class="modal">
+    <h3 id="assetModalTitle">编辑基金</h3>
+    <div id="assetModalBody"></div>
+    <div class="modal-footer">
+      <button class="pill-btn" onclick="saveAsset()">保存</button>
+      <button class="modal-close-btn" onclick="closeAssetModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Todo reminder -->
+<div class="todo-notify" id="todoNotify">
+  <div class="nt-title" id="ntTitle">⏰ 待办提醒</div>
+  <div class="nt-body" id="ntBody"></div>
+  <div class="nt-actions">
+    <button class="pill-btn sm" onclick="closeTodoNotify()">知道了</button>
+    <button class="pill-btn outline sm" onclick="gotoTodo()">查看</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   桥桥工作台 — Core JS
+   ============================================================ */
+
+/* ===== State ===== */
+var currentPage = 'knowledge-base';
+var mcpEnabled = true;
+var fundQuote = {};
+var _assetNewMode = false;
+var _assetEditIndex = -1;
+var _editingIndex = -1; // generic edit index
+var _productFilter = 'all';
+var _promptFilter = 'all';
+var _kbFilter = 'all';
+var _scriptPromptFilter = null; // reverse filter by prompt id
+var remoteData = { financeNews:[], operationIdeas:[], ideaLib:[], indexTrack:[], fundQuotes:{} };
+
+/* ===== localStorage helpers ===== */
+function _get(key, def) {
+  try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : (def !== undefined ? def : []); }
+  catch(e) { return def !== undefined ? def : []; }
+}
+function _set(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+function _wbGetSet(key) {
+  var v = _get(key, {});
+  if (Array.isArray(v) || v === null) v = {};
+  return v;
+}
+
+/* ===== Sync keys ===== */
+var SYNC_KEYS = ['todoList','knowledgeBase','accountObserve','workReview','productList','scriptList','promptList','recordList','sideIdeas','evalList','testList','archiveList','assetList','rebalanceList','bodyNoteList','checkinRecords','wb_fav'];
+
+/* ===== Toast ===== */
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2000);
+}
+
+/* ===== Routing ===== */
+function showPage(pageId) {
+  currentPage = pageId;
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  var el = document.getElementById('page-' + pageId);
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.sub-item').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.sub-item[data-page="'+pageId+'"]').forEach(function(s){ s.classList.add('active'); });
+  // render page
+  renderPage(pageId);
+  // close sidebar on mobile
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('show');
+    document.getElementById('sidebarOverlay').classList.remove('show');
+  }
+}
+
+function renderPage(pageId) {
+  switch(pageId) {
+    case 'operation-ideas': renderOperationIdeas(); break;
+    case 'account-observe': renderAccountObserve(); break;
+    case 'work-review': renderWorkReview(); break;
+    case 'product-lib': renderProductList(); break;
+    case 'idea-lib': renderIdeaLib(); break;
+    case 'script-lib': renderScriptList(); break;
+    case 'prompt-lib': renderPromptList(); break;
+    case 'record-review': renderRecordList(); break;
+    case 'side-idea': renderSideIdeas(); break;
+    case 'project-eval': renderEvalList(); break;
+    case 'project-test': renderTestList(); break;
+    case 'project-archive': renderArchiveList(); break;
+    case 'finance-news': renderFinanceNews(); break;
+    case 'asset-account': renderAssetList(); break;
+    case 'index-track': renderIndexTrack(); break;
+    case 'rebalance': renderRebalanceList(); break;
+    case 'health-checkin': renderCheckinPanel(); break;
+    case 'checkin-history': renderCheckinHistory(); break;
+    case 'body-note': renderBodyNoteList(); break;
+    case 'knowledge-base': renderKnowledgeBase(); break;
+    case 'favorites': renderFavorites(); break;
+    case 'todo-list': renderTodoList(); break;
+  }
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('show');
+  document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+
+function toggleGroup(n) {
+  var el = document.getElementById('group' + n);
+  var title = el.previousElementSibling;
+  el.classList.toggle('collapsed');
+  title.classList.toggle('collapsed');
+  if (el.classList.contains('collapsed')) {
+    el.style.maxHeight = '0';
+  } else {
+    el.style.maxHeight = el.scrollHeight + 'px';
+  }
+}
+
+function toggleMCP() {
+  mcpEnabled = !mcpEnabled;
+  var t = document.getElementById('mcpToggle');
+  t.classList.toggle('on', mcpEnabled);
+  showToast(mcpEnabled ? 'MCP 已开启（允许 AI 联网拉取）' : 'MCP 已关闭（仅本地读写）');
+}
+
+/* ===== Modal helpers ===== */
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+
+/* ===== Card builder ===== */
+function buildCard(opts) {
+  var div = document.createElement('div');
+  div.className = 'card';
+  if (opts.id) div.id = opts.id;
+  if (opts.flash) div.classList.add('flash');
+
+  if (opts.title) {
+    var t = document.createElement('div');
+    t.className = 'card-title';
+    t.innerHTML = opts.titleHtml || escapeHtml(opts.title);
+    if (opts.tags) {
+      opts.tags.forEach(function(tag) {
+        var s = document.createElement('span');
+        s.className = 'tag ' + (tag.cls || 'tag-pink');
+        s.textContent = tag.text;
+        t.appendChild(s);
+      });
+    }
+    div.appendChild(t);
+  }
+  if (opts.meta) {
+    var m = document.createElement('div');
+    m.className = 'card-meta';
+    m.innerHTML = opts.meta;
+    div.appendChild(m);
+  }
+  if (opts.content) {
+    var c = document.createElement('div');
+    c.className = 'card-content';
+    if (opts.clamp) c.classList.add('clamped');
+    c.textContent = opts.content;
+    div.appendChild(c);
+  }
+  if (opts.readMore) {
+    var rm = document.createElement('span');
+    rm.className = 'read-more';
+    rm.textContent = '查看全文 ›';
+    rm.onclick = function() {
+      openNewsModal({
+        title: opts.title,
+        content: opts.fullContent || opts.content,
+        url: opts.noModalUrl ? null : opts.url,
+        noModalUrl: opts.noModalUrl
+      });
+    };
+    div.appendChild(rm);
+  }
+  if (opts.extra) {
+    div.appendChild(opts.extra);
+  }
+  if (opts.footer) {
+    div.appendChild(opts.footer);
+  }
+  return div;
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ===== News modal (view full content) ===== */
+function openNewsModal(opts) {
+  document.getElementById('newsModalTitle').textContent = opts.title || '';
+  document.getElementById('newsModalBody').textContent = opts.content || '';
+  var footer = document.getElementById('newsModalFooter');
+  var copyBtn = document.getElementById('newsModalCopy');
+  var dlBtn = document.getElementById('newsModalDownload');
+  copyBtn.style.display = '';
+  dlBtn.style.display = '';
+  copyBtn.onclick = function() {
+    navigator.clipboard.writeText((opts.title||'') + '\n\n' + (opts.content||'')).then(function(){ showToast('已复制'); });
+  };
+  dlBtn.onclick = function() {
+    downloadMd(opts.title || 'content', (opts.title||'') + '\n\n' + (opts.content||'') + (opts.url ? '\n\n原文: ' + opts.url : ''));
+  };
+  if (opts.noModalUrl || !opts.url) {
+    // no "view original" link
+  }
+  openModal('newsModal');
+}
+
+function downloadMd(filename, content) {
+  var blob = new Blob([content], {type:'text/markdown;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename.replace(/[\/\\]/g,'_') + '.md';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ===== Favorites (toggleFav) ===== */
+function toggleFav(mod, title, content, url) {
+  var favs = _wbGetSet('wb_fav');
+  var key = mod + '::' + title;
+  if (favs[key]) {
+    delete favs[key];
+    _set('wb_fav', favs);
+    showToast('已取消收藏');
+  } else {
+    favs[key] = { mod:mod, title:title, content:content, url:url, date:todayStr(), favAt:Date.now() };
+    _set('wb_fav', favs);
+    showToast('已收藏');
+  }
+  renderPage(currentPage);
+}
+
+function isFav(mod, title) {
+  var favs = _wbGetSet('wb_fav');
+  return !!favs[mod + '::' + title];
+}
+
+/* ===== Transport to side idea ===== */
+function transportToSideIdea(title, content, url) {
+  var list = _get('sideIdeas');
+  list.unshift({ title:title, content:content, source:'AI抓取搬运', date:todayStr(), block:'', done:false });
+  _set('sideIdeas', list);
+  showToast('已搬运到灵感脑洞库');
+}
+
+function transportToEval(idx) {
+  var list = _get('sideIdeas');
+  var item = list[idx];
+  if (!item) return;
+  var evalList = _get('evalList');
+  evalList.unshift({ info:item.title, case:'', link:'', date:todayStr(), done:false });
+  _set('evalList', evalList);
+  list.splice(idx, 1);
+  _set('sideIdeas', list);
+  showToast('已搬运到项目评估池');
+  renderSideIdeas();
+}
+
+/* ===== Today string ===== */
+function todayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+/* ===== Common card actions ===== */
+function makeCardActions(actions) {
+  var div = document.createElement('div');
+  div.className = 'card-actions';
+  actions.forEach(function(a) {
+    var btn = document.createElement('button');
+    btn.innerHTML = a.icon;
+    btn.title = a.title || '';
+    btn.onclick = a.fn;
+    div.appendChild(btn);
+  });
+  return div;
+}
+
+function makeFooter(leftText, actions) {
+  var f = document.createElement('div');
+  f.className = 'card-footer';
+  var left = document.createElement('span');
+  left.className = 'card-meta';
+  left.textContent = leftText;
+  f.appendChild(left);
+  if (actions) f.appendChild(makeCardActions(actions));
+  return f;
+}
+
+/* ===== Remote data load ===== */
+function loadRemoteData() {
+  if (!mcpEnabled) { showToast('MCP 已关闭，请先开启'); return; }
+  fetch('./data.json?t=' + Date.now(), { cache:'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      remoteData = data;
+      if (data.fundQuotes) {
+        for (var k in data.fundQuotes) { fundQuote[k] = data.fundQuotes[k]; }
+      }
+      renderPage(currentPage);
+      showToast('已加载最新数据');
+    })
+    .catch(function(e) {
+      showToast('加载失败（本地模式兜底）');
+    });
+}
+
+/* ============================================================
+   MODULE RENDERERS
+   ============================================================ */
+
+/* ===== 1. operation-ideas (data.json.operationIdeas) ===== */
+function renderOperationIdeas() {
+  var list = remoteData.operationIdeas || [];
+  var container = document.getElementById('ops-list');
+  container.innerHTML = '';
+  var timeEl = document.getElementById('ops-update-time');
+  if (list.length > 0) {
+    var latest = list[0].date || '--';
+    timeEl.textContent = '最后更新: ' + latest;
+  } else {
+    timeEl.textContent = '';
+  }
+  if (list.length === 0) {
+    container.innerHTML = '<div class="empty-state">暂无数据，点「AI刷新抓取」或对话发「刷新」</div>';
+    return;
+  }
+  list.forEach(function(item) {
+    var fav = isFav('ops', item.title);
+    var actions = [
+      { icon: fav ? '🔖 取消收藏' : '🔖 收藏', fn: function(){ toggleFav('ops', item.title, item.content, item.url); } },
+      { icon: '📋 搬运', fn: function(){ transportToSideIdea(item.title, item.content, item.url); } }
+    ];
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({
+      title: item.title,
+      meta: item.url ? '<a href="'+item.url+'" target="_blank">'+escapeHtml(item.url)+'</a>' : '',
+      content: item.content,
+      clamp: item.content && item.content.length > 100,
+      readMore: item.content && item.content.length > 100,
+      fullContent: item.content,
+      url: item.url,
+      footer: footer
+    });
+    container.appendChild(card);
+  });
+}
+
+/* ===== 2. account-observe ===== */
+function renderAccountObserve() {
+  var list = _get('accountObserve');
+  var container = document.getElementById('account-observe-list');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无记录，点「+ 新增」添加</div>'; return; }
+  list.forEach(function(item, idx) {
+    var actions = [
+      { icon:'✎ 编辑', fn:function(){ openAccountObserveForm(idx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(idx,1); _set('accountObserve',list); renderAccountObserve(); } } }
+    ];
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({
+      title: item.name || '未命名',
+      tags: item.updateFreq ? [{text:item.updateFreq, cls:'tag-blue'}] : [],
+      content: [
+        item.hotVideo ? '【爆款要点】' + item.hotVideo : '',
+        item.learn ? '【我的借鉴思路】' + item.learn : '',
+        item.link ? '作品链接: ' + item.link : ''
+      ].filter(Boolean).join('\n'),
+      footer: footer
+    });
+    container.appendChild(card);
+  });
+}
+
+function openAccountObserveForm(idx) {
+  var list = _get('accountObserve');
+  var item = idx >= 0 ? list[idx] : { name:'', updateFreq:'', link:'', hotVideo:'', learn:'', date:todayStr() };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑观测记录' : '新增观测记录';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>账号名称</label><input id="ao-name" value="'+escapeHtml(item.name)+'"></div>'
+    + '<div class="form-row"><label>更新节奏</label><input id="ao-freq" placeholder="如 每日/每周3条" value="'+escapeHtml(item.updateFreq)+'"></div>'
+    + '<div class="form-row"><label>作品链接</label><input id="ao-link" value="'+escapeHtml(item.link)+'"></div>'
+    + '<div class="form-row"><label>爆款要点（视频结构+开头钩子+爆款要点）</label><textarea id="ao-hot" rows="4">'+escapeHtml(item.hotVideo)+'</textarea></div>'
+    + '<div class="form-row"><label>我的借鉴思路</label><textarea id="ao-learn" rows="3">'+escapeHtml(item.learn)+'</textarea></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = {
+      name: val('ao-name'), updateFreq: val('ao-freq'), link: val('ao-link'),
+      hotVideo: val('ao-hot'), learn: val('ao-learn'), date: todayStr()
+    };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('accountObserve', list);
+    closeModal('editModal');
+    renderAccountObserve();
+  };
+  openModal('editModal');
+}
+
+/* ===== 3. work-review ===== */
+function renderWorkReview() {
+  var list = _get('workReview');
+  var container = document.getElementById('work-review-list');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无记录</div>'; return; }
+  list.forEach(function(item, idx) {
+    var tags = (item.issueTags||[]).map(function(t){ return {text:t, cls:'tag-orange'}; });
+    var actions = [
+      { icon:'✎ 编辑', fn:function(){ openWorkReviewForm(idx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(idx,1); _set('workReview',list); renderWorkReview(); } } }
+    ];
+    var content = [
+      '播放 ' + (item.play||'--') + ' | 点赞 ' + (item.like||'--') + ' | 收藏 ' + (item.fav||'--') + ' | 评论 ' + (item.comment||'--') + ' | 转发 ' + (item.share||'--'),
+      item.issueText ? '【复盘】' + item.issueText : '',
+      item.optimize ? '【优化】' + item.optimize : ''
+    ].filter(Boolean).join('\n');
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({ title: item.title || '未命名', tags: tags, content: content, footer: footer });
+    container.appendChild(card);
+  });
+}
+
+function openWorkReviewForm(idx) {
+  var list = _get('workReview');
+  var item = idx >= 0 ? list[idx] : { title:'', link:'', play:'', like:'', fav:'', comment:'', share:'', issueText:'', issueTags:[], optimize:'', date:todayStr() };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑复盘' : '新增复盘';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>作品标题</label><input id="wr-title" value="'+escapeHtml(item.title)+'"></div>'
+    + '<div class="form-row"><label>作品链接</label><input id="wr-link" value="'+escapeHtml(item.link)+'"></div>'
+    + '<div class="form-inline">'
+    + '<div class="form-row"><label>播放</label><input id="wr-play" value="'+escapeHtml(item.play)+'"></div>'
+    + '<div class="form-row"><label>点赞</label><input id="wr-like" value="'+escapeHtml(item.like)+'"></div>'
+    + '<div class="form-row"><label>收藏</label><input id="wr-fav" value="'+escapeHtml(item.fav)+'"></div>'
+    + '<div class="form-row"><label>评论</label><input id="wr-comment" value="'+escapeHtml(item.comment)+'"></div>'
+    + '<div class="form-row"><label>转发</label><input id="wr-share" value="'+escapeHtml(item.share)+'"></div>'
+    + '</div>'
+    + '<div class="form-row"><label>复盘结论</label><textarea id="wr-issue" rows="3">'+escapeHtml(item.issueText)+'</textarea></div>'
+    + '<div class="form-row"><label>复盘标签（逗号分隔）</label><input id="wr-tags" value="'+escapeHtml((item.issueTags||[]).join(','))+'"></div>'
+    + '<div class="form-row"><label>优化方向</label><textarea id="wr-opt" rows="2">'+escapeHtml(item.optimize)+'</textarea></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = {
+      title: val('wr-title'), link: val('wr-link'), play: val('wr-play'), like: val('wr-like'),
+      fav: val('wr-fav'), comment: val('wr-comment'), share: val('wr-share'),
+      issueText: val('wr-issue'), issueTags: val('wr-tags').split(/[,，]/).filter(Boolean),
+      optimize: val('wr-opt'), date: todayStr()
+    };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('workReview', list);
+    closeModal('editModal');
+    renderWorkReview();
+  };
+  openModal('editModal');
+}
+
+/* ===== 4. product-lib ===== */
+function renderProductList() {
+  var list = _get('productList');
+  var container = document.getElementById('product-list');
+  container.innerHTML = '';
+  var filtered = _productFilter === 'all' ? list : list.filter(function(i){ return (i.done||'pending') === _productFilter; });
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">暂无选品</div>'; return; }
+  filtered.forEach(function(item) {
+    var realIdx = list.indexOf(item);
+    var statusMap = { pending:'待定', hold:'观望', done:'已定' };
+    var clsMap = { pending:'tag-orange', hold:'tag-blue', done:'tag-green' };
+    var st = item.done || 'pending';
+    var actions = [
+      { icon:'✎ 编辑', fn:function(){ openProductForm(realIdx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(realIdx,1); _set('productList',list); renderProductList(); } } }
+    ];
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({
+      title: item.info || '未命名',
+      tags: [{text:statusMap[st]||st, cls:clsMap[st]||'tag-gray'}],
+      content: [item.style?'风格: '+item.style:'', item.season?'季节: '+item.season:'', item.price?'卖点/价: '+item.price:''].filter(Boolean).join('\n'),
+      footer: footer
+    });
+    container.appendChild(card);
+  });
+}
+
+function filterProduct(st, btn) {
+  _productFilter = st;
+  document.querySelectorAll('#product-filter-bar button').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderProductList();
+}
+
+function openProductForm(idx) {
+  var list = _get('productList');
+  var item = idx >= 0 ? list[idx] : { info:'', style:'', season:'', price:'', date:todayStr(), done:'pending' };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑选品' : '新增选品';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>商品信息</label><input id="pl-info" value="'+escapeHtml(item.info)+'"></div>'
+    + '<div class="form-inline">'
+    + '<div class="form-row"><label>风格</label><input id="pl-style" value="'+escapeHtml(item.style)+'"></div>'
+    + '<div class="form-row"><label>季节</label><input id="pl-season" value="'+escapeHtml(item.season)+'"></div>'
+    + '</div>'
+    + '<div class="form-row"><label>卖点/价</label><input id="pl-price" value="'+escapeHtml(item.price)+'"></div>'
+    + '<div class="form-row"><label>状态</label><select id="pl-done"><option value="pending"'+(item.done==='pending'?' selected':'')+'>待定</option><option value="hold"'+(item.done==='hold'?' selected':'')+'>观望</option><option value="done"'+(item.done==='done'?' selected':'')+'>已定</option></select></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = { info:val('pl-info'), style:val('pl-style'), season:val('pl-season'), price:val('pl-price'), date:todayStr(), done:val('pl-done') };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('productList', list);
+    closeModal('editModal');
+    renderProductList();
+  };
+  openModal('editModal');
+}
+
+/* ===== 5. idea-lib (data.json) ===== */
+function renderIdeaLib() {
+  var list = remoteData.ideaLib || [];
+  var container = document.getElementById('idea-lib-list');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无灵感</div>'; return; }
+  var statusMap = { pending:'待定', doing:'进行中', done:'已完成' };
+  var clsMap = { pending:'tag-orange', doing:'tag-blue', done:'tag-green' };
+  list.forEach(function(item) {
+    var fav = isFav('idea', item.title);
+    var actions = [
+      { icon: fav ? '🔖 取消收藏' : '🔖 收藏', fn:function(){ toggleFav('idea', item.title, item.content, ''); } },
+      { icon: '📋 搬运', fn:function(){ transportToSideIdea(item.title, item.content, ''); } }
+    ];
+    var footer = makeFooter(item.status ? (statusMap[item.status]||item.status) : '', actions);
+    var card = buildCard({
+      title: item.title,
+      tags: item.status ? [{text:statusMap[item.status]||item.status, cls:clsMap[item.status]||'tag-gray'}] : [],
+      content: item.content,
+      clamp: item.content && item.content.length > 100,
+      readMore: item.content && item.content.length > 100,
+      fullContent: item.content,
+      footer: footer
+    });
+    container.appendChild(card);
+  });
+}
+
+/* ===== 6. script-lib ===== */
+function renderScriptList() {
+  var list = _get('scriptList');
+  var container = document.getElementById('script-list');
+  container.innerHTML = '';
+  var filtered = _scriptPromptFilter ? list.filter(function(i){ return i.promptId === _scriptPromptFilter; }) : list;
+  // filter banner
+  var banner = document.getElementById('script-filter-banner');
+  if (_scriptPromptFilter) {
+    var prompts = _get('promptList');
+    var p = prompts.find(function(x){ return 'P'+String(prompts.indexOf(x)+1).padStart(3,'0') === _scriptPromptFilter; });
+    banner.innerHTML = '<div class="filter-banner">只显示关联「'+(p?p.title:_scriptPromptFilter)+'」的脚本 <button class="pill-btn sm" onclick="clearScriptFilter()">✕</button></div>';
+  } else {
+    banner.innerHTML = '';
+  }
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">暂无脚本</div>'; return; }
+  var prompts = _get('promptList');
+  filtered.forEach(function(item) {
+    var realIdx = list.indexOf(item);
+    var linkedPrompt = item.promptId ? prompts.find(function(p,i){ return 'P'+String(i+1).padStart(3,'0') === item.promptId; }) : null;
+    var actions = [
+      { icon:'✎ 编辑', fn:function(){ openScriptForm(realIdx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(realIdx,1); _set('scriptList',list); renderScriptList(); } } }
+    ];
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({
+      title: item.title || '未命名',
+      tags: linkedPrompt ? [{text:'关联提示词: '+linkedPrompt.title, cls:'tag-purple'}] : [],
+      content: item.content,
+      clamp: item.content && item.content.length > 100,
+      readMore: item.content && item.content.length > 100,
+      fullContent: item.content,
+      noModalUrl: true,
+      footer: footer
+    });
+    container.appendChild(card);
+  });
+}
+
+function clearScriptFilter() { _scriptPromptFilter = null; renderScriptList(); }
+function filterScriptsByPrompt(pid) { _scriptPromptFilter = pid; showPage('script-lib'); }
+
+function openScriptForm(idx) {
+  var list = _get('scriptList');
+  var item = idx >= 0 ? list[idx] : { title:'', content:'', promptId:'', date:todayStr(), done:false };
+  var prompts = _get('promptList');
+  var promptOpts = '<option value="">不关联</option>' + prompts.map(function(p,i){
+    var pid = 'P'+String(i+1).padStart(3,'0');
+    return '<option value="'+pid+'"'+(item.promptId===pid?' selected':'')+'>'+pid+' '+escapeHtml(p.title)+'</option>';
+  }).join('');
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑脚本' : '新增脚本';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>脚本标题</label><input id="sl-title" value="'+escapeHtml(item.title)+'"></div>'
+    + '<div class="form-row"><label>关联 AI 提示词</label><select id="sl-prompt">'+promptOpts+'</select></div>'
+    + '<div class="form-row"><label>脚本内容</label><textarea id="sl-content" rows="6">'+escapeHtml(item.content)+'</textarea></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = { title:val('sl-title'), content:val('sl-content'), promptId:val('sl-prompt'), date:todayStr(), done:false };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('scriptList', list);
+    closeModal('editModal');
+    renderScriptList();
+  };
+  openModal('editModal');
+}
+
+/* ===== 7. prompt-lib ===== */
+function renderPromptList() {
+  var list = _get('promptList');
+  var container = document.getElementById('prompt-list');
+  container.innerHTML = '';
+  // build filter bar
+  var bar = document.getElementById('prompt-filter-bar');
+  var allTags = [];
+  list.forEach(function(i){ (i.tags||[]).forEach(function(t){ if(allTags.indexOf(t)<0) allTags.push(t); }); });
+  bar.innerHTML = '<button class="'+(_promptFilter==='all'?'active':'')+'" onclick="filterPrompt(\'all\',this)">全部</button>';
+  allTags.forEach(function(t){
+    var b = document.createElement('button');
+    b.textContent = t;
+    if (_promptFilter === t) b.classList.add('active');
+    b.onclick = function(){ filterPrompt(t, b); };
+    bar.appendChild(b);
+  });
+  var filtered = _promptFilter === 'all' ? list : list.filter(function(i){ return (i.tags||[]).indexOf(_promptFilter) >= 0; });
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">暂无提示词</div>'; return; }
+  list.forEach(function(item, idx) {
+    if (_promptFilter !== 'all' && (item.tags||[]).indexOf(_promptFilter) < 0) return;
+    var pid = 'P' + String(idx+1).padStart(3,'0');
+    var actions = [
+      { icon:'✎ 编辑', fn:function(){ openPromptForm(idx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(idx,1); _set('promptList',list); renderPromptList(); } } }
+    ];
+    var footer = makeFooter(pid, actions);
+    var card = buildCard({
+      title: pid + ' ' + (item.title || '未命名'),
+      tags: (item.tags||[]).map(function(t){ return {text:t, cls:'tag-purple'}; }),
+      content: item.content,
+      clamp: item.content && item.content.length > 100,
+      readMore: item.content && item.content.length > 100,
+      fullContent: item.content,
+      noModalUrl: true,
+      footer: footer
+    });
+    container.appendChild(card);
+  });
+}
+
+function filterPrompt(t, btn) {
+  _promptFilter = t;
+  renderPromptList();
+}
+
+function openPromptForm(idx) {
+  var list = _get('promptList');
+  var item = idx >= 0 ? list[idx] : { title:'', content:'', tags:[], date:todayStr(), done:false };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑提示词' : '新增提示词';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>标题</label><input id="pl-title" value="'+escapeHtml(item.title)+'"></div>'
+    + '<div class="form-row"><label>内容</label><textarea id="pl-content" rows="6">'+escapeHtml(item.content)+'</textarea></div>'
+    + '<div class="form-row"><label>标签（逗号分隔）</label><input id="pl-tags" value="'+escapeHtml((item.tags||[]).join(','))+'"></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = { title:val('pl-title'), content:val('pl-content'), tags:val('pl-tags').split(/[,，]/).filter(Boolean), date:todayStr(), done:false };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('promptList', list);
+    closeModal('editModal');
+    renderPromptList();
+  };
+  openModal('editModal');
+}
+
+/* ===== 8. record-review ===== */
+function renderRecordList() {
+  var list = _get('recordList');
+  var container = document.getElementById('record-list');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无记录</div>'; return; }
+  list.forEach(function(item, idx) {
+    var actions = [
+      { icon:'✎ 编辑', fn:function(){ openRecordForm(idx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(idx,1); _set('recordList',list); renderRecordList(); } } }
+    ];
+    var content = [
+      '播放 ' + (item.play||'--') + ' | 点赞 ' + (item.like||'--') + ' | 点击率 ' + (item.ctr||'--') + ' | 转化 ' + (item.deal||'--'),
+      item.analysis ? '【复盘】' + item.analysis : ''
+    ].filter(Boolean).join('\n');
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({ title: item.title || '未命名', content: content, footer: footer });
+    container.appendChild(card);
+  });
+}
+
+function openRecordForm(idx) {
+  var list = _get('recordList');
+  var item = idx >= 0 ? list[idx] : { title:'', play:'', like:'', ctr:'', deal:'', analysis:'', date:todayStr(), done:false };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑记录' : '新增记录';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>标题</label><input id="rl-title" value="'+escapeHtml(item.title)+'"></div>'
+    + '<div class="form-inline">'
+    + '<div class="form-row"><label>播放</label><input id="rl-play" value="'+escapeHtml(item.play)+'"></div>'
+    + '<div class="form-row"><label>点赞</label><input id="rl-like" value="'+escapeHtml(item.like)+'"></div>'
+    + '<div class="form-row"><label>点击率</label><input id="rl-ctr" value="'+escapeHtml(item.ctr)+'"></div>'
+    + '<div class="form-row"><label>转化</label><input id="rl-deal" value="'+escapeHtml(item.deal)+'"></div>'
+    + '</div>'
+    + '<div class="form-row"><label>复盘</label><textarea id="rl-analysis" rows="3">'+escapeHtml(item.analysis)+'</textarea></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = { title:val('rl-title'), play:val('rl-play'), like:val('rl-like'), ctr:val('rl-ctr'), deal:val('rl-deal'), analysis:val('rl-analysis'), date:todayStr(), done:false };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('recordList', list);
+    closeModal('editModal');
+    renderRecordList();
+  };
+  openModal('editModal');
+}
+
+/* ===== 9. side-idea ===== */
+function renderSideIdeas() {
+  var list = _get('sideIdeas');
+  var container = document.getElementById('side-idea-list');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无灵感</div>'; return; }
+  var srcMap = { '手动录入':'tag-gray', 'AI抓取搬运':'tag-blue', '脑洞搬运':'tag-purple' };
+  list.forEach(function(item, idx) {
+    var actions = [
+      { icon:'📋 搬运到项目评估池', fn:function(){ transportToEval(idx); } },
+      { icon:'✎ 编辑', fn:function(){ openSideIdeaForm(idx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(idx,1); _set('sideIdeas',list); renderSideIdeas(); } } }
+    ];
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({
+      title: item.title || '未命名',
+      tags: item.source ? [{text:item.source, cls:srcMap[item.source]||'tag-gray'}] : [],
+      content: item.content ? '【阻碍预判】' + item.content : '',
+      footer: footer
+    });
+    container.appendChild(card);
+  });
+}
+
+function openSideIdeaForm(idx) {
+  var list = _get('sideIdeas');
+  var item = idx >= 0 ? list[idx] : { title:'', content:'', source:'手动录入', date:todayStr(), block:'', done:false };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑灵感' : '新增灵感';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>想法</label><input id="si-title" value="'+escapeHtml(item.title)+'"></div>'
+    + '<div class="form-row"><label>阻碍初步预判</label><textarea id="si-content" rows="3">'+escapeHtml(item.content)+'</textarea></div>'
+    + '<div class="form-row"><label>来源</label><select id="si-source"><option value="手动录入"'+(item.source==='手动录入'?' selected':'')+'>手动录入</option><option value="AI抓取搬运"'+(item.source==='AI抓取搬运'?' selected':'')+'>AI抓取搬运</option><option value="脑洞搬运"'+(item.source==='脑洞搬运'?' selected':'')+'>脑洞搬运</option></select></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = { title:val('si-title'), content:val('si-content'), source:val('si-source'), date:todayStr(), block:'', done:false };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('sideIdeas', list);
+    closeModal('editModal');
+    renderSideIdeas();
+  };
+  openModal('editModal');
+}
+
+/* ===== 10. project-eval ===== */
+function renderEvalList() {
+  var list = _get('evalList');
+  var container = document.getElementById('project-eval-list');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无项目</div>'; return; }
+  list.forEach(function(item, idx) {
+    var actions = [
+      { icon:'✎ 编辑', fn:function(){ openEvalForm(idx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(idx,1); _set('evalList',list); renderEvalList(); } } }
+    ];
+    var content = [item.case?'对标案例: '+item.case:'', item.link?'链接: '+item.link:''].filter(Boolean).join('\n');
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({ title: item.info || '未命名', content: content, footer: footer });
+    container.appendChild(card);
+  });
+}
+
+function openEvalForm(idx) {
+  var list = _get('evalList');
+  var item = idx >= 0 ? list[idx] : { info:'', case:'', link:'', date:todayStr(), done:false };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑项目' : '新增项目';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>项目</label><input id="el-info" value="'+escapeHtml(item.info)+'"></div>'
+    + '<div class="form-row"><label>对标案例</label><input id="el-case" value="'+escapeHtml(item.case)+'"></div>'
+    + '<div class="form-row"><label>链接</label><input id="el-link" value="'+escapeHtml(item.link)+'"></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = { info:val('el-info'), case:val('el-case'), link:val('el-link'), date:todayStr(), done:false };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('evalList', list);
+    closeModal('editModal');
+    renderEvalList();
+  };
+  openModal('editModal');
+}
+
+/* ===== 11. project-test ===== */
+function renderTestList() {
+  var list = _get('testList');
+  var container = document.getElementById('project-test-list');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无测试记录</div>'; return; }
+  list.forEach(function(item, idx) {
+    var actions = [
+      { icon:'✎ 编辑', fn:function(){ openTestForm(idx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(idx,1); _set('testList',list); renderTestList(); } } }
+    ];
+    var content = [item.process?'【过程/现象】'+item.process:'', item.feedback?'【用户反馈】'+item.feedback:''].filter(Boolean).join('\n');
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({ title: item.name || '未命名', content: content, footer: footer });
+    container.appendChild(card);
+  });
+}
+
+function openTestForm(idx) {
+  var list = _get('testList');
+  var item = idx >= 0 ? list[idx] : { name:'', process:'', feedback:'', date:todayStr(), done:false };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑测试记录' : '新增测试记录';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>项目名称</label><input id="tl-name" value="'+escapeHtml(item.name)+'"></div>'
+    + '<div class="form-row"><label>过程/现象</label><textarea id="tl-process" rows="3">'+escapeHtml(item.process)+'</textarea></div>'
+    + '<div class="form-row"><label>用户反馈</label><textarea id="tl-feedback" rows="3">'+escapeHtml(item.feedback)+'</textarea></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = { name:val('tl-name'), process:val('tl-process'), feedback:val('tl-feedback'), date:todayStr(), done:false };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('testList', list);
+    closeModal('editModal');
+    renderTestList();
+  };
+  openModal('editModal');
+}
+
+/* ===== 12. project-archive ===== */
+function renderArchiveList() {
+  var list = _get('archiveList');
+  var container = document.getElementById('project-archive-list');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无归档</div>'; return; }
+  list.forEach(function(item, idx) {
+    var actions = [
+      { icon:'✎ 编辑', fn:function(){ openArchiveForm(idx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(idx,1); _set('archiveList',list); renderArchiveList(); } } }
+    ];
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({ title: item.name || '未命名', content: item.review ? '【复盘】'+item.review : '', footer: footer });
+    container.appendChild(card);
+  });
+}
+
+function openArchiveForm(idx) {
+  var list = _get('archiveList');
+  var item = idx >= 0 ? list[idx] : { name:'', review:'', date:todayStr(), done:false };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑归档' : '新增归档';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>项目名称</label><input id="al-name" value="'+escapeHtml(item.name)+'"></div>'
+    + '<div class="form-row"><label>复盘</label><textarea id="al-review" rows="4">'+escapeHtml(item.review)+'</textarea></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = { name:val('al-name'), review:val('al-review'), date:todayStr(), done:false };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('archiveList', list);
+    closeModal('editModal');
+    renderArchiveList();
+  };
+  openModal('editModal');
+}
+
+/* ===== 13. finance-news (data.json) ===== */
+function renderFinanceNews() {
+  var list = remoteData.financeNews || [];
+  var container = document.getElementById('finance-news-list');
+  container.innerHTML = '';
+  var timeEl = document.getElementById('finance-update-time');
+  if (list.length > 0) {
+    var dates = list.map(function(i){ return i.date; }).sort().reverse();
+    timeEl.textContent = '最后更新: ' + dates[0];
+  } else {
+    timeEl.textContent = '';
+  }
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无数据，点「AI刷新抓取」</div>'; return; }
+  list.forEach(function(item) {
+    var fav = isFav('finance', item.title);
+    var actions = [
+      { icon: fav ? '🔖 取消收藏' : '🔖 收藏', fn:function(){ toggleFav('finance', item.title, item.content, item.url); } },
+      { icon: '📋 搬运', fn:function(){ transportToSideIdea(item.title, item.content, item.url); } }
+    ];
+    var meta = item.source + ' · ' + (item.date || '');
+    if (item.url) meta += ' · <a href="'+item.url+'" target="_blank">原文</a>';
+    var footer = makeFooter(meta, actions);
+    var card = buildCard({
+      title: item.title,
+      content: item.content,
+      clamp: item.content && item.content.length > 100,
+      readMore: item.content && item.content.length > 100,
+      fullContent: item.content,
+      url: item.url,
+      footer: footer
+    });
+    container.appendChild(card);
+  });
+}
+
+/* ===== 14. asset-account (持仓台账) ===== */
+function detectFundType(name) {
+  var tags = [];
+  if (!name) return tags;
+  if (/标普/.test(name)) tags.push('标普500');
+  if (/纳斯达克|纳指/.test(name)) tags.push('纳斯达克');
+  if (/黄金/.test(name)) tags.push('黄金');
+  if (/红利低波|红利.*低波|低波.*红利/.test(name)) tags.push('红利低波');
+  if (/QDII/.test(name) || /摩根/.test(name)) { if(tags.indexOf('QDII')<0) tags.push('QDII'); }
+  return tags.slice(0, 4);
+}
+
+function machineType(name) {
+  if (!name) return 'other';
+  if (/黄金/.test(name)) return 'gold';
+  if (/纳斯达克|纳指/.test(name)) return 'nasdaq';
+  if (/红利低波|红利.*低波/.test(name)) return 'dividend';
+  if (/QDII|标普|摩根|纳斯达克|纳指/.test(name)) return 'qdii';
+  return 'other';
+}
+
+function fundSettleDays(name) {
+  var mt = machineType(name);
+  return (mt === 'qdii' || mt === 'nasdaq') ? 2 : 0;
+}
+
+function renderAssetList() {
+  var list = _get('assetList');
+  var container = document.getElementById('asset-list');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无持仓，点「+ 新增」或「识别导入」</div>'; return; }
+  list.forEach(function(item, idx) {
+    var types = detectFundType(item.name);
+    var q = fundQuote[item.code] || {};
+    var gszzl = q.gszzl;
+    var dwjz = q.dwjz || item.netValue || '--';
+    var quoteHtml = '';
+    if (gszzl !== undefined && gszzl !== null) {
+      var isUp = parseFloat(gszzl) >= 0;
+      quoteHtml = '<div class="fund-quote"><span>净值: '+dwjz+'</span><span class="'+(isUp?'up':'down')+'">'+(isUp?'▲':'▼')+' '+Math.abs(parseFloat(gszzl)).toFixed(2)+'%</span>'+(q.gztime?'<span style="color:#aaa">'+q.gztime+'</span>':'')+'</div>';
+    }
+    // DCA info
+    var dcaHtml = '';
+    if (item.dca && item.dca.enabled && item.dca.daily > 0) {
+      dcaHtml = '<div style="font-size:12px;color:var(--text-light);margin-top:4px">📅 定投: '+item.dca.freq+' '+item.dca.daily+'元';
+      if (item.dca.acc) dcaHtml += ' (累计 '+item.dca.acc+'元)';
+      dcaHtml += '</div>';
+    }
+    var profitHtml = '';
+    if (item.amount && item.cost) {
+      var profit = parseFloat(item.amount) - parseFloat(item.cost);
+      var pct = parseFloat(item.cost) > 0 ? (profit / parseFloat(item.cost) * 100).toFixed(2) : '--';
+      var isUp = profit >= 0;
+      profitHtml = '<div class="fund-quote"><span>市值: '+item.amount+'</span><span>成本: '+item.cost+'</span><span class="'+(isUp?'up':'down')+'">'+(isUp?'+':'')+profit.toFixed(2)+' ('+pct+'%)</span></div>';
+    }
+    var actions = [
+      { icon:'📅 定投', fn:function(){ openDcaModal(idx); } },
+      { icon:'✎ 编辑', fn:function(){ openAssetForm(idx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(idx,1); _set('assetList',list); renderAssetList(); } } }
+    ];
+    var footer = makeFooter('更新: ' + (item.date || '--'), actions);
+    var card = buildCard({
+      title: item.name || '未命名基金',
+      tags: types.map(function(t){ return {text:t, cls:'tag-pink'}; }).concat(item.season ? [] : []),
+      content: [
+        '代码: ' + (item.code || '--'),
+        item.sector ? '板块: ' + item.sector : '',
+        item.plan ? '档位: ' + item.plan : '',
+        item.judge ? '判断: ' + item.judge : ''
+      ].filter(Boolean).join('\n') + (profitHtml||dcaHtml||quoteHtml ? '' : ''),
+      footer: footer
+    });
+    if (profitHtml) card.insertAdjacentHTML('beforeend', profitHtml);
+    if (quoteHtml) card.insertAdjacentHTML('beforeend', quoteHtml);
+    if (dcaHtml) card.insertAdjacentHTML('beforeend', dcaHtml);
+    container.appendChild(card);
+  });
+}
+
+function val(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+function openAssetForm(idx) {
+  var list = _get('assetList');
+  var item = idx >= 0 ? JSON.parse(JSON.stringify(list[idx])) : { name:'', code:'', amount:'', cost:'', netValue:'', shares:'', type:'', sector:'', buyDate:'', plan:'', judge:'', dca:{enabled:false,daily:0,freq:'daily',lastDate:'',acc:0,weeklyAmount:0,weekday:1}, date:todayStr(), done:false };
+  _assetEditIndex = idx;
+  _assetNewMode = idx < 0;
+  document.getElementById('assetModalTitle').textContent = idx >= 0 ? '编辑基金' : '新增基金';
+  document.getElementById('assetModalBody').innerHTML =
+    '<div class="form-inline">'
+    + '<div class="form-row"><label>基金代码</label><input id="as-code" value="'+escapeHtml(item.code)+'"></div>'
+    + '<div class="form-row"><label>基金名称</label><input id="as-name" value="'+escapeHtml(item.name)+'"></div>'
+    + '</div>'
+    + '<div class="form-inline">'
+    + '<div class="form-row"><label>市值</label><input id="as-amount" value="'+escapeHtml(item.amount)+'"></div>'
+    + '<div class="form-row"><label>成本</label><input id="as-cost" value="'+escapeHtml(item.cost)+'"></div>'
+    + '<div class="form-row"><label>单位净值</label><input id="as-net" value="'+escapeHtml(item.netValue)+'"></div>'
+    + '<div class="form-row"><label>份额</label><input id="as-shares" value="'+escapeHtml(item.shares)+'"></div>'
+    + '</div>'
+    + '<div class="form-inline">'
+    + '<div class="form-row"><label>板块</label><input id="as-sector" value="'+escapeHtml(item.sector)+'"></div>'
+    + '<div class="form-row"><label>买入日期</label><input type="date" id="as-buyDate" value="'+escapeHtml(item.buyDate)+'"></div>'
+    + '<div class="form-row"><label>加减仓档位</label><input id="as-plan" value="'+escapeHtml(item.plan)+'"></div>'
+    + '</div>'
+    + '<div class="form-row"><label>个人判断</label><textarea id="as-judge" rows="2">'+escapeHtml(item.judge)+'</textarea></div>';
+  openModal('assetModal');
+}
+
+function closeAssetModal() {
+  _assetNewMode = false;
+  _assetEditIndex = -1;
+  closeModal('assetModal');
+}
+
+function saveAsset() {
+  var list = _get('assetList');
+  var code = val('as-code');
+  var name = val('as-name');
+  if (!name && !code) { showToast('请填写基金名称或代码'); return; }
+  var newItem = {
+    name: name, code: code, amount: val('as-amount'), cost: val('as-cost'),
+    netValue: val('as-net'), shares: val('as-shares'), type: '', sector: val('as-sector'),
+    buyDate: val('as-buyDate'), plan: val('as-plan'), judge: val('as-judge'),
+    dca: (_assetEditIndex >= 0 && list[_assetEditIndex].dca) ? list[_assetEditIndex].dca : {enabled:false,daily:0,freq:'daily',lastDate:'',acc:0,weeklyAmount:0,weekday:1},
+    date: todayStr(), done: false
+  };
+  // duplicate check by code
+  if (code) {
+    var existing = list.findIndex(function(i){ return i.code === code; });
+    if (existing >= 0 && existing !== _assetEditIndex) {
+      list[existing] = newItem;
+      showToast('已更新同名基金');
+    } else if (_assetEditIndex >= 0) {
+      list[_assetEditIndex] = newItem;
+    } else {
+      list.unshift(newItem);
+    }
+  } else {
+    if (_assetEditIndex >= 0) list[_assetEditIndex] = newItem;
+    else list.unshift(newItem);
+  }
+  _set('assetList', list);
+  _assetNewMode = false;
+  _assetEditIndex = -1;
+  closeModal('assetModal');
+  renderAssetList();
+}
+
+/* Quick add by code */
+function quickAddByCode() {
+  var code = prompt('请输入6位基金代码:');
+  if (!code || code.length !== 6) { showToast('代码格式不正确'); return; }
+  // Try to fetch fund name via JSONP (fundgz callback name = jsonpgz)
+  var script = document.createElement('script');
+  window.jsonpgz = function(data) {
+    if (data && data.name) {
+      var list = _get('assetList');
+      var existing = list.findIndex(function(i){ return i.code === code; });
+      if (existing >= 0) {
+        showToast('该基金已存在，直接编辑');
+        openAssetForm(existing);
+      } else {
+        openAssetForm(-1);
+        setTimeout(function(){
+          document.getElementById('as-code').value = code;
+          document.getElementById('as-name').value = data.name;
+        }, 100);
+      }
+    } else {
+      showToast('未取到基金名，请手动填写');
+      openAssetForm(-1);
+      setTimeout(function(){ document.getElementById('as-code').value = code; }, 100);
+    }
+  };
+  script.src = 'https://fundgz.1234567.com.cn/js/' + code + '.js?rt=' + Date.now();
+  script.onerror = function() {
+    // fallback: open form with code
+    openAssetForm(-1);
+    setTimeout(function(){
+      document.getElementById('as-code').value = code;
+      showToast('未取到基金名，请手动填写');
+    }, 100);
+  };
+  document.body.appendChild(script);
+}
+
+/* DCA modal */
+function openDcaModal(idx) {
+  var list = _get('assetList');
+  var item = list[idx];
+  if (!item) return;
+  _assetEditIndex = idx;
+  var dca = item.dca || {enabled:false, daily:0, freq:'daily', lastDate:'', acc:0, weeklyAmount:0, weekday:1};
+  document.getElementById('dcaModalBody').innerHTML =
+    '<div class="form-row"><label>频率</label><select id="dca-freq"><option value="daily"'+(dca.freq==='daily'?' selected':'')+'>每日</option><option value="weekly"'+(dca.freq==='weekly'?' selected':'')+'>每周</option></select></div>'
+    + '<div class="form-row"><label>金额（0=关闭）</label><input type="number" id="dca-amount" value="'+(dca.daily||0)+'"></div>'
+    + '<div class="form-row" id="dca-weekday-row" style="display:'+(dca.freq==='weekly'?'block':'none')+'"><label>星期几</label><select id="dca-weekday"><option value="1"'+(dca.weekday==1?' selected':'')+'>周一</option><option value="2"'+(dca.weekday==2?' selected':'')+'>周二</option><option value="3"'+(dca.weekday==3?' selected':'')+'>周三</option><option value="4"'+(dca.weekday==4?' selected':'')+'>周四</option><option value="5"'+(dca.weekday==5?' selected':'')+'>周五</option></select></div>'
+    + '<div style="font-size:12px;color:var(--text-light)">累计定投: '+(dca.acc||0)+'元 | 上次: '+(dca.lastDate||'未开始')+'</div>';
+  document.getElementById('dca-freq').onchange = function() {
+    document.getElementById('dca-weekday-row').style.display = this.value === 'weekly' ? 'block' : 'none';
+  };
+  openModal('dcaModal');
+}
+
+function saveDca() {
+  var list = _get('assetList');
+  var item = list[_assetEditIndex];
+  if (!item) return;
+  var freq = val('dca-freq');
+  var amount = parseFloat(val('dca-amount')) || 0;
+  item.dca = {
+    enabled: amount > 0,
+    daily: amount,
+    freq: freq,
+    lastDate: item.dca ? item.dca.lastDate : '',
+    acc: item.dca ? item.dca.acc : 0,
+    weeklyAmount: freq === 'weekly' ? amount : 0,
+    weekday: freq === 'weekly' ? parseInt(val('dca-weekday')) : 1
+  };
+  _set('assetList', list);
+  closeModal('dcaModal');
+  renderAssetList();
+  showToast('定投已保存');
+}
+
+/* Run DCA — accumulate from today */
+function runDCA() {
+  var list = _get('assetList');
+  var today = todayStr();
+  var changed = false;
+  list.forEach(function(item) {
+    if (!item.dca || !item.dca.enabled || item.dca.daily <= 0) return;
+    var settle = fundSettleDays(item.name);
+    var lastDate = item.dca.lastDate;
+    if (!lastDate) {
+      // start from today
+      item.dca.acc = (item.dca.acc || 0) + item.dca.daily;
+      item.dca.lastDate = today;
+      changed = true;
+    } else {
+      // accumulate days since lastDate (not retroactive for past, just today)
+      if (lastDate < today) {
+        item.dca.acc = (item.dca.acc || 0) + item.dca.daily;
+        item.dca.lastDate = today;
+        changed = true;
+      }
+    }
+  });
+  if (changed) { _set('assetList', list); }
+}
+
+/* Refresh fund quotes from eastmoney */
+function refreshFundQuotes() {
+  if (!mcpEnabled) { showToast('MCP 已关闭'); return; }
+  var list = _get('assetList');
+  if (list.length === 0) { showToast('暂无持仓'); return; }
+  showToast('正在刷新涨跌…');
+  var loaded = 0;
+  var total = list.length;
+  // sequential load to avoid variable collision
+  function loadOne(i) {
+    if (i >= total) {
+      renderAssetList();
+      showToast('涨跌刷新完成');
+      return;
+    }
+    var item = list[i];
+    if (!item.code) { loadOne(i+1); return; }
+    var script = document.createElement('script');
+    window.jsonpgz = function(data) {
+      if (data && data.fundcode) {
+        fundQuote[item.code] = {
+          fundcode: data.fundcode,
+          name: data.name,
+          gszzl: data.gszzl,
+          gsz: data.gsz,
+          dwjz: data.dwjz || '',
+          gztime: data.jzrq || data.gztime || ''
+        };
+      }
+      loadOne(i+1);
+    };
+    script.src = 'https://fundgz.1234567.com.cn/js/' + item.code + '.js?rt=' + Date.now();
+    script.onerror = function() { loadOne(i+1); };
+    document.body.appendChild(script);
+  }
+  loadOne(0);
+}
+
+/* ===== 15. index-track (data.json) ===== */
+function renderIndexTrack() {
+  var list = remoteData.indexTrack || [];
+  var container = document.getElementById('index-track-list');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无数据</div>'; return; }
+  var levelMap = { high:{text:'高关注',cls:'tag-red'}, mid:{text:'中关注',cls:'tag-orange'}, low:{text:'低关注',cls:'tag-gray'} };
+  list.forEach(function(item) {
+    var div = document.createElement('div');
+    div.className = 'idx-card';
+    div.style.borderLeftColor = item.color || '#F06292';
+    var header = '<div class="idx-header"><div class="idx-icon" style="background:'+item.color+'"></div><span class="idx-name">'+escapeHtml(item.name)+'</span>';
+    if (item.level && levelMap[item.level]) header += '<span class="tag '+levelMap[item.level].cls+'">'+levelMap[item.level].text+'</span>';
+    header += '</div>';
+    var rows = '<div class="idx-rows">';
+    (item.rows||[]).forEach(function(r){ rows += '<div class="idx-row"><span class="lbl">'+escapeHtml(r.label)+': </span><span class="val">'+escapeHtml(r.val)+'</span></div>'; });
+    rows += '</div>';
+    if (item.note) rows += '<div class="idx-note">'+escapeHtml(item.note)+'</div>';
+    if (item.dataSource) rows += '<div class="idx-source">'+escapeHtml(item.dataSource)+'</div>';
+    div.innerHTML = header + rows;
+    container.appendChild(div);
+  });
+}
+
+/* ===== 16. rebalance ===== */
+function renderRebalanceList() {
+  var list = _get('rebalanceList');
+  var container = document.getElementById('rebalance-list');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无记录</div>'; return; }
+  list.forEach(function(item, idx) {
+    var actions = [
+      { icon:'✎ 编辑', fn:function(){ openRebalanceForm(idx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(idx,1); _set('rebalanceList',list); renderRebalanceList(); } } }
+    ];
+    var content = [
+      item.action ? '操作: ' + item.action : '',
+      item.share ? '金额: ' + item.share : '',
+      item.time ? '时间: ' + item.time : '',
+      item.reason ? '【原因】' + item.reason : '',
+      item.logic ? '【逻辑】' + item.logic : ''
+    ].filter(Boolean).join('\n');
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({ title: item.target || '未命名', content: content, footer: footer });
+    container.appendChild(card);
+  });
+}
+
+function openRebalanceForm(idx) {
+  var list = _get('rebalanceList');
+  var item = idx >= 0 ? list[idx] : { target:'', time:'', action:'', share:'', reason:'', logic:'', date:todayStr(), done:false };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑调仓记录' : '新增调仓记录';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-inline">'
+    + '<div class="form-row"><label>标的</label><input id="rb-target" value="'+escapeHtml(item.target)+'"></div>'
+    + '<div class="form-row"><label>时间</label><input id="rb-time" value="'+escapeHtml(item.time)+'"></div>'
+    + '<div class="form-row"><label>操作</label><select id="rb-action"><option value="加"'+(item.action==='加'?' selected':'')+'>加</option><option value="减"'+(item.action==='减'?' selected':'')+'>减</option><option value="调"'+(item.action==='调'?' selected':'')+'>调</option></select></div>'
+    + '<div class="form-row"><label>金额</label><input id="rb-share" value="'+escapeHtml(item.share)+'"></div>'
+    + '</div>'
+    + '<div class="form-row"><label>原因</label><textarea id="rb-reason" rows="2">'+escapeHtml(item.reason)+'</textarea></div>'
+    + '<div class="form-row"><label>逻辑</label><textarea id="rb-logic" rows="2">'+escapeHtml(item.logic)+'</textarea></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = { target:val('rb-target'), time:val('rb-time'), action:val('rb-action'), share:val('rb-share'), reason:val('rb-reason'), logic:val('rb-logic'), date:todayStr(), done:false };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('rebalanceList', list);
+    closeModal('editModal');
+    renderRebalanceList();
+  };
+  openModal('editModal');
+}
+
+/* ===== 17. health-checkin (table) ===== */
+var CHECKIN_ITEMS = ['睡眠', '运动', '饮水', '食疗', '体感'];
+
+function renderCheckinPanel() {
+  var records = _get('checkinRecords', {});
+  var today = todayStr();
+  var todayRec = records[today] || { items: {} };
+  if (!todayRec.items) todayRec.items = {};
+  var container = document.getElementById('checkin-panel');
+  var html = '<table class="checkin-table"><thead><tr><th>打卡项</th><th>已打卡</th></tr></thead><tbody>';
+  CHECKIN_ITEMS.forEach(function(item) {
+    var checked = todayRec.items[item] ? ' checked' : '';
+    html += '<tr><td>'+item+'</td><td><input type="checkbox" id="ck-'+item+'"'+checked+'></td></tr>';
+  });
+  html += '</tbody></table>';
+  html += '<div style="font-size:12px;color:var(--text-light)">日期: '+today+'</div>';
+  container.innerHTML = html;
+}
+
+function saveCheckin() {
+  var records = _get('checkinRecords', {});
+  var today = todayStr();
+  var items = {};
+  CHECKIN_ITEMS.forEach(function(item) {
+    var el = document.getElementById('ck-' + item);
+    if (el && el.checked) items[item] = true;
+  });
+  records[today] = { items: items };
+  _set('checkinRecords', records);
+  showToast('已保存今日打卡');
+}
+
+/* ===== 18. checkin-history ===== */
+function renderCheckinHistory() {
+  var records = _get('checkinRecords', {});
+  var now = new Date();
+  var ym = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  var container = document.getElementById('checkin-history-panel');
+  var monthDays = [];
+  for (var d in records) {
+    if (d.startsWith(ym)) monthDays.push(d);
+  }
+  monthDays.sort();
+  if (monthDays.length === 0) {
+    container.innerHTML = '<div class="empty-state">本月暂无打卡记录</div>';
+    return;
+  }
+  // aggregate
+  var dimCounts = {};
+  CHECKIN_ITEMS.forEach(function(i){ dimCounts[i] = 0; });
+  var dimRecent = {};
+  CHECKIN_ITEMS.forEach(function(i){ dimRecent[i] = []; });
+  monthDays.forEach(function(d) {
+    var rec = records[d];
+    if (!rec || !rec.items) return;
+    CHECKIN_ITEMS.forEach(function(item) {
+      if (rec.items[item]) {
+        dimCounts[item]++;
+        dimRecent[item].push(d);
+      }
+    });
+  });
+  var html = '<div style="margin-bottom:12px"><span class="tag tag-green">本月已打卡 '+monthDays.length+' 天</span></div>';
+  html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">';
+  CHECKIN_ITEMS.forEach(function(item) {
+    html += '<span class="tag tag-pink">'+item+': '+dimCounts[item]+'天</span>';
+  });
+  html += '</div>';
+  html += '<h3 style="font-size:14px;color:var(--pink-deep);margin-bottom:8px">各维度最近3天</h3>';
+  CHECKIN_ITEMS.forEach(function(item) {
+    var recent = dimRecent[item].slice(-3).reverse();
+    html += '<div class="card"><div class="card-title">'+item+' <span class="tag tag-gray">'+dimCounts[item]+'天</span></div>';
+    if (recent.length > 0) {
+      html += '<div class="card-meta">'+recent.join(' · ')+'</div>';
+    } else {
+      html += '<div class="card-meta">暂无记录</div>';
+    }
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+/* ===== 19. body-note ===== */
+function renderBodyNoteList() {
+  var list = _get('bodyNoteList');
+  var container = document.getElementById('body-note-list');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无记录</div>'; return; }
+  list.forEach(function(item, idx) {
+    var actions = [
+      { icon:'✎ 编辑', fn:function(){ openBodyNoteForm(idx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(idx,1); _set('bodyNoteList',list); renderBodyNoteList(); } } }
+    ];
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({ content: item.content, footer: footer });
+    if (!item.content) card.querySelector('.card-content').textContent = '(空)';
+    container.appendChild(card);
+  });
+}
+
+function openBodyNoteForm(idx) {
+  var list = _get('bodyNoteList');
+  var item = idx >= 0 ? list[idx] : { content:'', date:todayStr(), done:false };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑备忘' : '新增备忘';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>内容（仅记录，不适提示就医）</label><textarea id="bn-content" rows="4">'+escapeHtml(item.content)+'</textarea></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = { content:val('bn-content'), date:todayStr(), done:false };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('bodyNoteList', list);
+    closeModal('editModal');
+    renderBodyNoteList();
+  };
+  openModal('editModal');
+}
+
+/* ===== 20. knowledge-base ===== */
+function renderKnowledgeBase() {
+  var list = _get('knowledgeBase');
+  var container = document.getElementById('knowledge-base-list');
+  container.innerHTML = '';
+  var filtered = _kbFilter === 'all' ? list : list.filter(function(i){ return i.category === _kbFilter; });
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">暂无笔记</div>'; return; }
+  filtered.forEach(function(item) {
+    var realIdx = list.indexOf(item);
+    var catCls = { '理财':'tag-pink', '养生':'tag-green', 'AI':'tag-blue', '运营':'tag-orange' };
+    var actions = [
+      { icon:'⧉ 复制', fn:function(){ navigator.clipboard.writeText((item.title||'')+'\n\n'+(item.content||'')).then(function(){ showToast('已复制'); }); } },
+      { icon:'⤓ 导出', fn:function(){ downloadMd(item.title||'note', (item.title||'')+'\n\n'+(item.content||'')+(item.url?'\n\n'+item.url:'')); } },
+      { icon:'✎ 编辑', fn:function(){ openKbForm(realIdx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(realIdx,1); _set('knowledgeBase',list); renderKnowledgeBase(); } } }
+    ];
+    var footer = makeFooter(item.date || '', actions);
+    var card = buildCard({
+      title: item.title || '未命名',
+      tags: item.category ? [{text:item.category, cls:catCls[item.category]||'tag-gray'}] : [],
+      content: item.content,
+      cardOpen: false,
+      readMore: true,
+      fullContent: item.content,
+      noModalUrl: true,
+      footer: footer
+    });
+    // clamp content
+    var contentEl = card.querySelector('.card-content');
+    if (contentEl) contentEl.classList.add('clamped');
+    container.appendChild(card);
+  });
+}
+
+function filterKb(cat, btn) {
+  _kbFilter = cat;
+  document.querySelectorAll('#kb-filter-bar button').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderKnowledgeBase();
+}
+
+function openKbForm(idx) {
+  var list = _get('knowledgeBase');
+  var item = idx >= 0 ? list[idx] : { title:'', content:'', category:'理财', date:todayStr(), url:'', note:'' };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑笔记' : '新增笔记';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>标题</label><input id="kb-title" value="'+escapeHtml(item.title)+'"></div>'
+    + '<div class="form-row"><label>分类</label><select id="kb-cat"><option value="理财"'+(item.category==='理财'?' selected':'')+'>理财</option><option value="养生"'+(item.category==='养生'?' selected':'')+'>养生</option><option value="AI"'+(item.category==='AI'?' selected':'')+'>AI</option><option value="运营"'+(item.category==='运营'?' selected':'')+'>运营</option></select></div>'
+    + '<div class="form-row"><label>内容</label><textarea id="kb-content" rows="6">'+escapeHtml(item.content)+'</textarea></div>'
+    + '<div class="form-row"><label>URL（可选）</label><input id="kb-url" value="'+escapeHtml(item.url)+'"></div>'
+    + '<div class="form-row"><label>备注（可选）</label><input id="kb-note" value="'+escapeHtml(item.note)+'"></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = { title:val('kb-title'), content:val('kb-content'), category:val('kb-cat'), date:todayStr(), url:val('kb-url'), note:val('kb-note') };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('knowledgeBase', list);
+    closeModal('editModal');
+    renderKnowledgeBase();
+  };
+  openModal('editModal');
+}
+
+function openPasteModal() {
+  document.getElementById('pasteTextarea').value = '';
+  openModal('pasteModal');
+}
+
+function savePasteNote() {
+  var text = val('pasteTextarea');
+  if (!text) { showToast('请粘贴内容'); return; }
+  var lines = text.split('\n').filter(Boolean);
+  var title = lines[0] || '未命名';
+  var content = text;
+  var cat = val('pasteCategory');
+  var list = _get('knowledgeBase');
+  list.unshift({ title:title, content:content, category:cat, date:todayStr(), url:'', note:'' });
+  _set('knowledgeBase', list);
+  closeModal('pasteModal');
+  renderKnowledgeBase();
+  showToast('已生成卡片');
+}
+
+function openCopyNotesModal() {
+  document.getElementById('copyNotesCat').value = '理财';
+  previewCopyNotes();
+  openModal('copyNotesModal');
+}
+
+function previewCopyNotes() {
+  var cat = val('copyNotesCat');
+  var list = _get('knowledgeBase');
+  var filtered = list.filter(function(i){ return i.category === cat; });
+  var preview = document.getElementById('copyNotesPreview');
+  if (filtered.length === 0) { preview.textContent = '该分类暂无笔记'; return; }
+  var text = filtered.map(function(i){ return '## ' + i.title + '\n' + (i.content||'') + (i.url?'\n原文: '+i.url:''); }).join('\n\n---\n\n');
+  preview.textContent = text;
+}
+
+function doCopyNotes() {
+  var cat = val('copyNotesCat');
+  var list = _get('knowledgeBase');
+  var filtered = list.filter(function(i){ return i.category === cat; });
+  if (filtered.length === 0) { showToast('该分类暂无笔记'); return; }
+  var text = filtered.map(function(i){ return '## ' + i.title + '\n' + (i.content||'') + (i.url?'\n原文: '+i.url:''); }).join('\n\n---\n\n');
+  navigator.clipboard.writeText(text).then(function(){ showToast('已复制 '+filtered.length+' 条笔记'); });
+}
+
+/* ===== 21. favorites ===== */
+function renderFavorites() {
+  var favs = _wbGetSet('wb_fav');
+  var container = document.getElementById('favorites-list');
+  container.innerHTML = '';
+  var keys = Object.keys(favs);
+  if (keys.length === 0) { container.innerHTML = '<div class="empty-state">暂无收藏，在理财/运营/选题卡片点 🔖 收藏</div>'; return; }
+  var modMap = { finance:'理财每日新知', ops:'运营思路&选题', idea:'选题素材库' };
+  keys.sort(function(a,b){ return (favs[b].favAt||0) - (favs[a].favAt||0); });
+  keys.forEach(function(key) {
+    var item = favs[key];
+    var actions = [
+      { icon:'🔖 取消收藏', fn:function(){ delete favs[key]; _set('wb_fav',favs); renderFavorites(); showToast('已取消收藏'); } }
+    ];
+    var footer = makeFooter(modMap[item.mod] || item.mod || '', actions);
+    var card = buildCard({
+      title: item.title,
+      tags: [{text:modMap[item.mod]||item.mod, cls:'tag-pink'}],
+      content: item.content,
+      clamp: item.content && item.content.length > 100,
+      readMore: item.content && item.content.length > 100,
+      fullContent: item.content,
+      url: item.url,
+      footer: footer
+    });
+    container.appendChild(card);
+  });
+}
+
+/* ===== 22. todo-list ===== */
+function renderTodoList() {
+  var list = _get('todoList');
+  var container = document.getElementById('todo-list-render');
+  container.innerHTML = '';
+  if (list.length === 0) { container.innerHTML = '<div class="empty-state">暂无待办</div>'; return; }
+  // sort: high > mid > low, newest first within same priority
+  var prioOrder = { '高':0, '中':1, '低':2 };
+  list.sort(function(a,b) {
+    var pa = prioOrder[a.prio] !== undefined ? prioOrder[a.prio] : 3;
+    var pb = prioOrder[b.prio] !== undefined ? prioOrder[b.prio] : 3;
+    if (pa !== pb) return pa - pb;
+    return (b.createdAt||0) - (a.createdAt||0);
+  });
+  list.forEach(function(item, idx) {
+    var prioCls = { '高':'tag-red', '中':'tag-orange', '低':'tag-gray' };
+    var actions = [
+      { icon: item.done ? '↩ 取消完成' : '✓ 完成', fn:function(){ item.done = !item.done; _set('todoList',list); renderTodoList(); } },
+      { icon:'✎ 编辑', fn:function(){ openTodoForm(idx); } },
+      { icon:'🗑 删除', fn:function(){ if(confirm('删除？')){ list.splice(idx,1); _set('todoList',list); renderTodoList(); } } }
+    ];
+    var meta = item.due ? '⏰ ' + item.due : '';
+    if (item.remind) meta += (meta?' | ':'') + '提醒: ' + item.remind;
+    if (item.done) meta = '✅ 已完成 · ' + meta;
+    var footer = makeFooter(meta, actions);
+    var card = buildCard({
+      title: item.text || '未命名',
+      tags: item.prio ? [{text:item.prio, cls:prioCls[item.prio]||'tag-gray'}] : [],
+      footer: footer
+    });
+    if (item.done) card.style.opacity = '0.5';
+    container.appendChild(card);
+  });
+}
+
+function openTodoForm(idx) {
+  var list = _get('todoList');
+  var item = idx >= 0 ? list[idx] : { text:'', prio:'中', due:'', remind:'', createdAt:Date.now(), done:false };
+  document.getElementById('editModalTitle').textContent = idx >= 0 ? '编辑待办' : '新增待办';
+  document.getElementById('editModalBody').innerHTML =
+    '<div class="form-row"><label>内容</label><input id="td-text" value="'+escapeHtml(item.text)+'"></div>'
+    + '<div class="form-inline">'
+    + '<div class="form-row"><label>优先级</label><select id="td-prio"><option value="高"'+(item.prio==='高'?' selected':'')+'>高</option><option value="中"'+(item.prio==='中'?' selected':'')+'>中</option><option value="低"'+(item.prio==='低'?' selected':'')+'>低</option></select></div>'
+    + '<div class="form-row"><label>时间 (HH:MM)</label><input type="time" id="td-due" value="'+escapeHtml(item.due)+'"></div>'
+    + '</div>'
+    + '<div class="form-row"><label>提醒语</label><input id="td-remind" value="'+escapeHtml(item.remind)+'"></div>';
+  document.getElementById('editModalSave').onclick = function() {
+    var newItem = { text:val('td-text'), prio:val('td-prio'), due:val('td-due'), remind:val('td-remind'), createdAt:item.createdAt||Date.now(), done:item.done||false };
+    if (idx >= 0) list[idx] = newItem; else list.unshift(newItem);
+    _set('todoList', list);
+    closeModal('editModal');
+    renderTodoList();
+  };
+  openModal('editModal');
+}
+
+/* ===== Todo reminder check ===== */
+function checkTodoReminders() {
+  var list = _get('todoList');
+  var now = new Date();
+  var hhmm = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  var today = todayStr();
+  for (var i = 0; i < list.length; i++) {
+    var item = list[i];
+    if (item.done) continue;
+    if (item.due && item.due === hhmm && !item._reminded) {
+      item._reminded = true;
+      _set('todoList', list);
+      showTodoNotify(item);
+      break;
+    }
+  }
+}
+
+function showTodoNotify(item) {
+  document.getElementById('ntTitle').textContent = '⏰ ' + (item.due || '');
+  document.getElementById('ntBody').textContent = item.text + (item.remind ? '\n' + item.remind : '');
+  document.getElementById('todoNotify').classList.add('show');
+}
+
+function closeTodoNotify() { document.getElementById('todoNotify').classList.remove('show'); }
+function gotoTodo() { closeTodoNotify(); showPage('todo-list'); }
+
+/* ===== Global search ===== */
+var SEARCH_MODULES = [
+  { id:'knowledge-base', name:'知识库笔记', key:'knowledgeBase', fields:['title','content','note'] },
+  { id:'todo-list', name:'今日待办', key:'todoList', fields:['text','remind'] },
+  { id:'finance-news', name:'理财每日新知', remote:'financeNews', fields:['title','content','summary'] },
+  { id:'operation-ideas', name:'运营思路', remote:'operationIdeas', fields:['title','content'] },
+  { id:'idea-lib', name:'选题灵感库', remote:'ideaLib', fields:['title','content'] },
+  { id:'account-observe', name:'对标账号观测', key:'accountObserve', fields:['name','hotVideo','learn'] },
+  { id:'work-review', name:'作品复盘', key:'workReview', fields:['title','issueText','optimize'] },
+  { id:'product-lib', name:'选品库', key:'productList', fields:['info','style','price'] },
+  { id:'script-lib', name:'脚本库', key:'scriptList', fields:['title','content'] },
+  { id:'prompt-lib', name:'提示词仓库', key:'promptList', fields:['title','content'] },
+  { id:'record-review', name:'发布记录', key:'recordList', fields:['title','analysis'] },
+  { id:'side-idea', name:'灵感脑洞', key:'sideIdeas', fields:['title','content'] },
+  { id:'project-eval', name:'项目评估池', key:'evalList', fields:['info','case'] },
+  { id:'project-test', name:'项目测试', key:'testList', fields:['name','process','feedback'] },
+  { id:'project-archive', name:'项目归档', key:'archiveList', fields:['name','review'] },
+  { id:'asset-account', name:'持仓台账', key:'assetList', fields:['name','code','judge'] },
+  { id:'index-track', name:'指数跟踪', remote:'indexTrack', fields:['name','note'] },
+  { id:'rebalance', name:'调仓记录', key:'rebalanceList', fields:['target','reason','logic'] },
+  { id:'body-note', name:'身体备忘', key:'bodyNoteList', fields:['content'] }
+];
+
+function doSearch() {
+  var query = val('globalSearch');
+  if (!query) return;
+  // quick jump
+  var quickJump = {
+    '理财':'finance-news','理财台账':'asset-account','待办':'todo-list','今日待办':'todo-list',
+    '打卡':'health-checkin','今日打卡':'health-checkin','养生打卡':'health-checkin',
+    '搜索':'knowledge-base','知识库':'knowledge-base','工作台首页':'knowledge-base',
+    '指数':'index-track','指数跟踪':'index-track','指数跟踪表':'index-track',
+    '调仓':'rebalance','调仓记录':'rebalance','脚本':'script-lib','短视频脚本':'script-lib',
+    '运营':'operation-ideas','运营思路':'operation-ideas','选题':'idea-lib','选题灵感':'idea-lib',
+    '选品':'product-lib','提示词':'prompt-lib','发布记录':'record-review',
+    '脑洞':'side-idea','灵感':'side-idea','评估':'project-eval','测试':'project-test',
+    '归档':'project-archive','身体':'body-note','收藏':'favorites','我的收藏':'favorites'
+  };
+  if (quickJump[query]) {
+    showPage(quickJump[query]);
+    document.getElementById('globalSearch').value = '';
+    return;
+  }
+  // full-text search
+  var words = query.split(/\s+/).filter(Boolean);
+  var results = [];
+  SEARCH_MODULES.forEach(function(mod) {
+    var data;
+    if (mod.remote) data = remoteData[mod.remote] || [];
+    else data = _get(mod.key);
+    if (!Array.isArray(data)) return;
+    data.forEach(function(item, idx) {
+      var titleHit = false;
+      var contentHit = false;
+      var snippet = '';
+      var titleText = (item.title || item.name || item.info || item.text || '').toLowerCase();
+      var contentText = mod.fields.map(function(f){ return (item[f]||'').toLowerCase(); }).join(' ');
+      var allHit = words.every(function(w) {
+        var lw = w.toLowerCase();
+        if (titleText.indexOf(lw) >= 0) { titleHit = true; return true; }
+        if (contentText.indexOf(lw) >= 0) { contentHit = true; return true; }
+        return false;
+      });
+      if (allHit) {
+        // build snippet
+        var fullText = mod.fields.map(function(f){ return item[f]||''; }).join(' ');
+        var firstWord = words[0].toLowerCase();
+        var pos = fullText.toLowerCase().indexOf(firstWord);
+        if (pos >= 0) {
+          var start = Math.max(0, pos - 20);
+          snippet = (start > 0 ? '...' : '') + fullText.substring(start, pos + 60) + '...';
+        }
+        results.push({ mod:mod, idx:idx, item:item, titleHit:titleHit, snippet:snippet });
+      }
+    });
+  });
+  // sort: title hit first
+  results.sort(function(a,b){ return (b.titleHit?1:0) - (a.titleHit?1:0); });
+  // render results
+  var body = document.getElementById('searchModalBody');
+  if (results.length === 0) {
+    body.innerHTML = '<div class="empty-state">未找到与「'+escapeHtml(query)+'」相关的内容</div>';
+  } else {
+    body.innerHTML = '';
+    results.forEach(function(r) {
+      var div = document.createElement('div');
+      div.className = 'card';
+      div.style.cursor = 'pointer';
+      var title = r.item.title || r.item.name || r.item.info || r.item.text || '未命名';
+      div.innerHTML = '<div class="card-meta">'+escapeHtml(r.mod.name)+'</div><div class="card-title">'+escapeHtml(title)+'</div>'+(r.snippet?'<div class="card-content" style="font-size:12px">'+escapeHtml(r.snippet)+'</div>':'');
+      div.onclick = function() {
+        closeModal('searchModal');
+        showPage(r.mod.id);
+        // try to scroll to card
+        setTimeout(function() {
+          var container = document.querySelector('#page-' + r.mod.id + ' .card');
+          if (container) {
+            var cards = document.querySelectorAll('#page-' + r.mod.id + ' .card');
+            if (cards[r.idx]) {
+              cards[r.idx].scrollIntoView({ behavior:'smooth', block:'center' });
+              cards[r.idx].classList.add('flash');
+              setTimeout(function(){ cards[r.idx].classList.remove('flash'); }, 2400);
+            }
+          }
+        }, 200);
+      };
+      body.appendChild(div);
+    });
+  }
+  openModal('searchModal');
+}
+
+/* ===== Cloud sync (GitHub API direct) ===== */
+var _syncDebounceTimer = null;
+
+function openSyncModal() {
+  var token = localStorage.getItem('syncGithubToken') || '';
+  var user = localStorage.getItem('syncGithubUser') || '';
+  document.getElementById('syncGithubUser').value = user;
+  document.getElementById('syncGithubToken').value = token;
+  document.getElementById('syncStatus').textContent = token ? '已设置 Token' : '未设置 Token';
+  openModal('syncModal');
+}
+
+function syncPush() {
+  var user = val('syncGithubUser');
+  var token = val('syncGithubToken');
+  if (!user || !token) { showToast('请填写用户名和Token'); return; }
+  localStorage.setItem('syncGithubToken', token);
+  localStorage.setItem('syncGithubUser', user);
+  var status = document.getElementById('syncStatus');
+  status.textContent = '推送中…';
+  // gather all sync keys
+  var data = {};
+  SYNC_KEYS.forEach(function(k){ data[k] = _get(k, k==='wb_fav'||k==='checkinRecords'?{}:[]); });
+  var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  var repo = user + '/' + user + '.github.io';
+  var url = 'https://api.github.com/repos/' + repo + '/contents/userData.json';
+  // GET sha first
+  fetch(url, { headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'} })
+    .then(function(r){ return r.json(); })
+    .then(function(json) {
+      var body = { message:'sync: push userData '+new Date().toISOString().slice(0,16), content:b64, branch:'main' };
+      if (json && json.sha) body.sha = json.sha;
+      return fetch(url, {
+        method:'PUT',
+        headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},
+        body:JSON.stringify(body)
+      });
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(json) {
+      if (json.content || json.commit) {
+        status.textContent = '✅ 推送成功';
+        showToast('推送成功');
+      } else {
+        status.textContent = '❌ 推送失败: ' + (json.message || '');
+      }
+    })
+    .catch(function(e) {
+      status.textContent = '❌ 网络错误: ' + e.message;
+    });
+}
+
+function syncPull() {
+  var user = val('syncGithubUser');
+  var token = val('syncGithubToken');
+  if (!user || !token) { showToast('请填写用户名和Token'); return; }
+  localStorage.setItem('syncGithubToken', token);
+  localStorage.setItem('syncGithubUser', user);
+  var status = document.getElementById('syncStatus');
+  status.textContent = '拉取中…';
+  var repo = user + '/' + user + '.github.io';
+  var url = 'https://api.github.com/repos/' + repo + '/contents/userData.json';
+  fetch(url, { headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'} })
+    .then(function(r){ return r.json(); })
+    .then(function(json) {
+      if (json && json.content) {
+        var decoded = decodeURIComponent(escape(atob(json.content.replace(/\n/g,''))));
+        var data = JSON.parse(decoded);
+        SYNC_KEYS.forEach(function(k) {
+          var v = data[k];
+          if (v === null) v = (k==='wb_fav'||k==='checkinRecords') ? {} : [];
+          _set(k, v);
+        });
+        status.textContent = '✅ 拉取成功';
+        showToast('拉取成功');
+        renderPage(currentPage);
+      } else {
+        status.textContent = '❌ 拉取失败: ' + (json.message || '文件不存在');
+      }
+    })
+    .catch(function(e) {
+      status.textContent = '❌ 网络错误: ' + e.message;
+    });
+}
+
+/* Auto-push on localStorage change (debounced) */
+var _origSetItem = Storage.prototype.setItem;
+Storage.prototype.setItem = function(key, val) {
+  _origSetItem.call(this, key, val);
+  if (SYNC_KEYS.indexOf(key) >= 0 && localStorage.getItem('syncGithubToken')) {
+    if (_syncDebounceTimer) clearTimeout(_syncDebounceTimer);
+    _syncDebounceTimer = setTimeout(function() {
+      // auto push
+      var user = localStorage.getItem('syncGithubUser');
+      var token = localStorage.getItem('syncGithubToken');
+      if (!user || !token) return;
+      var data = {};
+      SYNC_KEYS.forEach(function(k){ data[k] = _get(k, k==='wb_fav'||k==='checkinRecords'?{}:[]); });
+      var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+      var repo = user + '/' + user + '.github.io';
+      var url = 'https://api.github.com/repos/' + repo + '/contents/userData.json';
+      fetch(url, { headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'} })
+        .then(function(r){ return r.json(); })
+        .then(function(json) {
+          var body = { message:'auto-sync '+new Date().toISOString().slice(0,16), content:b64, branch:'main' };
+          if (json && json.sha) body.sha = json.sha;
+          return fetch(url, {
+            method:'PUT',
+            headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},
+            body:JSON.stringify(body)
+          });
+        })
+        .catch(function(){});
+    }, 700);
+  }
+};
+
+/* ===== Command handler (for quick commands) ===== */
+function handleCommand(cmd) {
+  var map = {
+    '工作台首页':'knowledge-base','短视频脚本':'script-lib','理财台账':'asset-account',
+    '指数跟踪表':'index-track','调仓记录':'rebalance','今日养生打卡':'health-checkin',
+    '打卡历史汇总':'checkin-history','运动规划':'health-checkin','今日待办':'todo-list'
+  };
+  if (map[cmd]) { showPage(map[cmd]); return true; }
+  if (cmd === 'MCP开关-开') { mcpEnabled = true; document.getElementById('mcpToggle').classList.add('on'); showToast('MCP 已开启'); return true; }
+  if (cmd === 'MCP开关-关') { mcpEnabled = false; document.getElementById('mcpToggle').classList.remove('on'); showToast('MCP 已关闭'); return true; }
+  if (cmd === '重置记忆') {
+    if (confirm('确定重置所有本地数据？')) {
+      SYNC_KEYS.forEach(function(k){ localStorage.removeItem(k); });
+      showToast('已重置');
+      showPage(currentPage);
+    }
+    return true;
+  }
+  return false;
+}
+
+/* ===== Init ===== */
+function init() {
+  // load remote data
+  loadRemoteData();
+  // show default page
+  showPage('knowledge-base');
+  // run DCA check
+  runDCA();
+  // todo reminder interval
+  setInterval(checkTodoReminders, 30000);
+  // close modal on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) overlay.classList.remove('show');
+    });
+  });
+  // URL hash navigation
+  if (location.hash) {
+    var hashPage = location.hash.substring(1);
+    var pages = ['operation-ideas','account-observe','work-review','product-lib','idea-lib','script-lib','prompt-lib','record-review','side-idea','project-eval','project-test','project-archive','finance-news','asset-account','index-track','rebalance','health-checkin','checkin-history','body-note','knowledge-base','favorites','todo-list'];
+    if (pages.indexOf(hashPage) >= 0) showPage(hashPage);
+  }
+  // handle ?cmd= parameter for quick commands
+  var params = new URLSearchParams(location.search);
+  var cmd = params.get('cmd');
+  if (cmd) handleCommand(cmd);
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
