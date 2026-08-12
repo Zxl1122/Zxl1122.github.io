@@ -149,6 +149,10 @@ ul{list-style:none}
 .idx-card .idx-price .u{font-size:12px;font-weight:400;color:var(--text-light)}
 .idx-card .idx-price .d{font-size:11px;font-weight:400;color:var(--text-light)}
 .idx-card .idx-sec{font-size:12px;color:var(--text-light);margin-top:4px}
+.idx-card .idx-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.idx-card .idx-refresh{background:var(--pink-bg);border:1px solid var(--pink-active);color:var(--pink-deep);border-radius:14px;padding:3px 12px;font-size:12px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.idx-card .idx-refresh:hover{background:var(--pink-active);color:#fff}
+.idx-card .idx-refresh:disabled{opacity:.6;cursor:default}
 
 
 /* ===== Empty state ===== */
@@ -1941,14 +1945,17 @@ function renderIndexTrack() {
     if (item.level && levelMap[item.level]) header += '<span class="tag '+levelMap[item.level].cls+'">'+levelMap[item.level].text+'</span>';
     header += '</div>';
     var body = '';
-    if (item.dualPrice) {
+    var liveGold = (item.name === '黄金') ? readGoldLive() : null;
+    if (item.dualPrice || liveGold) {
       var uid = 'gdp-' + Math.random().toString(36).slice(2, 9);
-      _idxDual[uid] = item.dualPrice;
-      var dp = item.dualPrice;
+      var dp = liveGold || item.dualPrice;
+      _idxDual[uid] = dp;
       body += '<div class="idx-dual">';
-      body += '<div class="idx-toggle" id="'+uid+'">'
+      body += '<div class="idx-toggle-row"><div class="idx-toggle" id="'+uid+'">'
         + '<button class="on" data-u="usd" onclick="idxSwitchUnit(\''+uid+'\',\'usd\')">美元/盎司</button>'
         + '<button data-u="rmb" onclick="idxSwitchUnit(\''+uid+'\',\'rmb\')">人民币/克</button>'
+        + '</div>'
+        + (item.name === '黄金' ? '<button class="idx-refresh" onclick="refreshGoldPrice()">🔄刷新</button>' : '')
         + '</div>';
       body += '<div class="idx-price" id="'+uid+'-price"><span>'+(dp.usd.val||'--')+'</span> <span class="u">美元/盎司</span> <span class="d">'+(dp.usd.date||'')+'</span></div>';
       body += '<div class="idx-sec">人民币/克: '+(dp.rmb.val||'--')+' <span style="color:#aaa">('+(dp.rmb.date||'')+')</span></div>';
@@ -1972,7 +1979,58 @@ function idxSwitchUnit(uid, unit) {
   var priceEl = document.getElementById(uid + '-price');
   if (!priceEl) return;
   var u = dp[unit] || {};
-  priceEl.innerHTML = '<span>'+(u.val||'--')+'</span> <span class="u">'+escapeHtml(u.label||'')+'</span> <span class="d">'+(u.date||'')+'</span>';
+  var unitLabel = unit === 'usd' ? '美元/盎司' : '人民币/克';
+  priceEl.innerHTML = '<span>'+(u.val||'--')+'</span> <span class="u">'+unitLabel+'</span> <span class="d">'+(u.date||'')+'</span>';
+}
+
+/* gold live refresh (client-side JSONP to eastmoney) */
+function readGoldLive() {
+  try { var v = JSON.parse(localStorage.getItem('_goldLive')); if (v && v.usd && v.rmb) return v; } catch(e){}
+  return null;
+}
+function refreshGoldPrice() {
+  var btn = document.querySelector('.idx-refresh');
+  if (btn) { btn.disabled = true; btn.textContent = '刷新中…'; }
+  fetchGold(['101.XAU','101.XAUUSDO','119.GCmain'], 'usd', function(usd){
+    fetchGold(['114.AU0','114.AUmain','117.AU9999'], 'rmb', function(rmb){
+      if (usd || rmb) {
+        var base = readGoldLive() || { usd:{val:'--',date:''}, rmb:{val:'--',date:''} };
+        var live = {
+          usd: usd || base.usd,
+          rmb: rmb || base.rmb,
+          updated: new Date().toISOString().slice(0,16).replace('T',' ')
+        };
+        try { localStorage.setItem('_goldLive', JSON.stringify(live)); } catch(e){}
+        renderIndexTrack();
+        showToast('金价已刷新（实时）');
+      } else {
+        showToast('实时金价获取失败，仍显示参考值');
+      }
+      if (btn) { btn.disabled = false; btn.textContent = '🔄刷新'; }
+    });
+  });
+}
+function fetchGold(cands, unit, cb, idx) {
+  idx = idx || 0;
+  if (idx >= cands.length) { cb(null); return; }
+  var cbName = 'goldcb_' + Math.random().toString(36).slice(2,8);
+  var s = document.createElement('script');
+  window[cbName] = function(d) {
+    delete window[cbName];
+    var data = d && d.data ? d.data : {};
+    if (data.f43) {
+      var raw = parseFloat(data.f43);
+      // unit sanity: eastmoney encodes stocks ×100; guard for gold
+      if (unit === 'usd' && raw > 20000) raw = raw / 100;       // USD/oz sane ~1000–20000
+      if (unit === 'rmb' && raw > 5000) raw = raw / 100;        // CNY/g sane ~100–5000
+      cb({ val: raw.toFixed(2), name: data.f58 || '', date: new Date().toISOString().slice(0,16).replace('T',' ') });
+    } else {
+      fetchGold(cands, unit, cb, idx + 1);
+    }
+  };
+  s.onerror = function() { delete window[cbName]; fetchGold(cands, unit, cb, idx + 1); };
+  s.src = 'https://push2.eastmoney.com/api/qt/stock/get?secid=' + cands[idx] + '&fields=f43,f57,f58,f60&cb=' + cbName;
+  document.body.appendChild(s);
 }
 
 /* ===== 16. rebalance ===== */
