@@ -141,6 +141,15 @@ ul{list-style:none}
 .idx-card .idx-row .val{font-weight:600;color:var(--text)}
 .idx-card .idx-note{font-size:13px;color:#555;background:var(--pink-bg);padding:8px 10px;border-radius:var(--radius-sm);margin-top:6px;white-space:pre-wrap}
 .idx-card .idx-source{font-size:11px;color:var(--text-light);margin-top:6px}
+.idx-card .idx-dual{margin:2px 0 8px}
+.idx-card .idx-toggle{display:inline-flex;border:1px solid var(--pink-active);border-radius:14px;overflow:hidden;margin-bottom:6px}
+.idx-card .idx-toggle button{background:#fff;border:none;padding:3px 12px;font-size:12px;color:var(--text-light);cursor:pointer;transition:all .15s}
+.idx-card .idx-toggle button.on{background:var(--pink-main);color:#fff}
+.idx-card .idx-price{font-size:22px;font-weight:700;color:var(--pink-deep);display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.idx-card .idx-price .u{font-size:12px;font-weight:400;color:var(--text-light)}
+.idx-card .idx-price .d{font-size:11px;font-weight:400;color:var(--text-light)}
+.idx-card .idx-sec{font-size:12px;color:var(--text-light);margin-top:4px}
+
 
 /* ===== Empty state ===== */
 .empty-state{text-align:center;padding:40px 20px;color:var(--text-light);font-size:14px}
@@ -1931,14 +1940,39 @@ function renderIndexTrack() {
     var header = '<div class="idx-header"><div class="idx-icon" style="background:'+item.color+'"></div><span class="idx-name">'+escapeHtml(item.name)+'</span>';
     if (item.level && levelMap[item.level]) header += '<span class="tag '+levelMap[item.level].cls+'">'+levelMap[item.level].text+'</span>';
     header += '</div>';
+    var body = '';
+    if (item.dualPrice) {
+      var uid = 'gdp-' + Math.random().toString(36).slice(2, 9);
+      _idxDual[uid] = item.dualPrice;
+      var dp = item.dualPrice;
+      body += '<div class="idx-dual">';
+      body += '<div class="idx-toggle" id="'+uid+'">'
+        + '<button class="on" data-u="usd" onclick="idxSwitchUnit(\''+uid+'\',\'usd\')">美元/盎司</button>'
+        + '<button data-u="rmb" onclick="idxSwitchUnit(\''+uid+'\',\'rmb\')">人民币/克</button>'
+        + '</div>';
+      body += '<div class="idx-price" id="'+uid+'-price"><span>'+(dp.usd.val||'--')+'</span> <span class="u">美元/盎司</span> <span class="d">'+(dp.usd.date||'')+'</span></div>';
+      body += '<div class="idx-sec">人民币/克: '+(dp.rmb.val||'--')+' <span style="color:#aaa">('+(dp.rmb.date||'')+')</span></div>';
+      body += '</div>';
+    }
     var rows = '<div class="idx-rows">';
     (item.rows||[]).forEach(function(r){ rows += '<div class="idx-row"><span class="lbl">'+escapeHtml(r.label)+': </span><span class="val">'+escapeHtml(r.val)+'</span></div>'; });
     rows += '</div>';
     if (item.note) rows += '<div class="idx-note">'+escapeHtml(item.note)+'</div>';
     if (item.dataSource) rows += '<div class="idx-source">'+escapeHtml(item.dataSource)+'</div>';
-    div.innerHTML = header + rows;
+    div.innerHTML = header + body + rows;
     container.appendChild(div);
   });
+}
+
+var _idxDual = {};
+function idxSwitchUnit(uid, unit) {
+  var dp = _idxDual[uid]; if (!dp) return;
+  var toggle = document.getElementById(uid);
+  if (toggle) toggle.querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-u') === unit); });
+  var priceEl = document.getElementById(uid + '-price');
+  if (!priceEl) return;
+  var u = dp[unit] || {};
+  priceEl.innerHTML = '<span>'+(u.val||'--')+'</span> <span class="u">'+escapeHtml(u.label||'')+'</span> <span class="d">'+(u.date||'')+'</span>';
 }
 
 /* ===== 16. rebalance ===== */
